@@ -1,0 +1,76 @@
+<div id="c-title">{{if ne .Device.Tag ""}}{{.Device.Tag}}, {{end}}{{.Device.Devflag}}</div>
+<div class="card mb-2 shadow-sm">
+    <h4 class="card-header">
+        {{if ne .Device.Tag ""}}{{.Device.Tag}}, {{end}}{{.Device.Devflag}}
+    </h4>
+    {{template "DeviceTop" Dict "URL" .URL "Device" .Device "DeviceRealTime" .DeviceRealTime}}
+</div>
+
+<div class="card mb-2 shadow-sm">
+    <div class="card-header">
+        <ul class="nav nav-tabs card-header-tabs">
+            <li class="nav-item">
+                <a class="nav-link c-ajax active" href={{.URL.GenURLBase (printf "/device/%s/graph"
+                    .Device.Devflag)}}>Graph</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link c-ajax" href={{.URL.GenURLBase (printf "/device/%s/history"
+                    .Device.Devflag)}}>History</a>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body">
+        <div class="btn-toolbar" role="toolbar">
+            <div class="btn-group mr-2" role="group">
+                <button type="button" data-c-dest="content" data-c-url={{.URL.GenURLBase (printf "/device/%s/hour"
+                    .Device.Devflag)}} class="c-ajax btn btn-secondary">Hour</button>
+                <button type="button" data-c-dest="content" data-c-url={{.URL.GenURLBase (printf "/device/%s/day"
+                    .Device.Devflag)}} class="c-ajax btn btn-secondary">Day</button>
+                <button type="button" data-c-dest="content" data-c-url={{.URL.GenURLBase (printf "/device/%s/week"
+                    .Device.Devflag)}} class="c-ajax btn btn-secondary">Week</button>
+                <button type="button" data-c-dest="content" data-c-url={{.URL.GenURLBase (printf "/device/%s/month"
+                    .Device.Devflag)}} class="c-ajax btn btn-secondary">Month</button>
+            </div>
+        </div>
+        <canvas id="chartDevices" width="100%"></canvas>
+    </div>
+</div>
+
+<script type="text/javascript">
+    var data = {
+        labels: {{.Labels }},
+    datasets: [
+        {{ range .Devices }}
+        {
+            label: {{.Description }},
+        fill: false,
+        data: {{.Dataset }}
+            },
+        {{ end }}
+    ],
+    };
+
+    const config = {
+        type: 'line',
+        data: data,
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                tooltip: {
+                    borderWidth: 5,
+                    usePointStyle: true,
+                },
+            },
+            title: {
+                display: true,
+                text: 'Devices'
+            }
+        }
+    }
+
+    var ctx = $("#chartDevices");
+    var myChart = Chart.Line(ctx, config);
+</script>

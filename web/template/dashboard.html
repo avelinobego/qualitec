@@ -1,0 +1,278 @@
+<div id="c-title">Dashboard</div>
+<div class="dashboard">
+    <div class="card-deck">
+        <div class="card text-right shadow-sm">
+            <div class="card-body">
+                <h5 class="h6">Meus Chamados</h5>
+                <p class="card-text display-4">{{.TotalMyOpenTicket}}</p>
+            </div>
+            <div class="card-footer">
+                <a class="c-ajax" href={{.URL.GenURLBaseMulti2 "/tickets" "status" "open" "assigned" .User.ID}}>
+                    Detalhes <i class="fa fa-arrow-circle-right"></i>
+                </a>
+            </div>
+        </div>
+        <div class="card text-right shadow-sm">
+            <div class="card-body">
+                <h5 class="h6">Chamados em Aberto</h5>
+                <p class="card-text display-4">{{.TotalOpenTicket}}</p>
+            </div>
+            <div class="card-footer">
+                <a class="c-ajax" href={{.URL.GenURLBaseMulti1 "/tickets" "status" "open"}}>
+                    Detalhes <i class="fa fa-arrow-circle-right"></i>
+                </a>
+            </div>
+        </div>
+        <div class="card text-right shadow-sm">
+            <div class="card-body">
+                <h5 class="h6">Chamados Hoje</h5>
+                <div class="d-flex">
+                    <div class="flex-grow-1 mr-2" style="min-width: 0;">
+                        <canvas id="chart-topen" style="width: 50px; height: 60px"></canvas>
+                    </div>
+                    <div class="display-4">{{.TicketOpenedToday}}</div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a class="c-ajax" href={{.URL.GenURLBaseMulti1 "/tickets" "date" "today"}}>
+                    Detalhes <i class="fa fa-arrow-circle-right"></i>
+                </a>
+            </div>
+        </div>
+        <div class="card text-right shadow-sm">
+            <div class="card-body">
+                <h5 class="h6">Máx Semana</h5>
+                <p class="card-text display-4">{{.WeekMaxCount}}</p>
+            </div>
+            <div class="card-footer">
+                {{.WeekMaxDate}}
+            </div>
+        </div>
+    </div>
+    <div class="card-deck">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <i class="fa fa-bar-chart"></i>&nbsp;&nbsp;Chamados últimas semanas
+            </div>
+            <div class="card-body">
+                <canvas id="myChart" style="width: 300px; height: 220px"></canvas>
+            </div>
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <i class="fa fa-bar-chart"></i>&nbsp;&nbsp;Semanas com mais chamados
+            </div>
+            <div class="card-body">
+                <canvas id="myChartWeekMax" style="width: 300px; height: 220px"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    var data = {
+        labels: {{.GraphLabelTicketOpenedJSON}},
+        datasets: [
+            {
+                type: 'line',
+                label: 'Novos Chamados',
+                fill: true,
+                borderWidth: 1,
+                borderColor: "rgba(143,161,179,1)",
+                backgroundColor: "rgba(143,161,179,1)",
+                pointRadius: 0,
+                data: {{.GraphDataTicketOpenedJSON}},
+                datalabels: {
+                    display: false
+                }
+            }
+        ]
+    };
+
+    var ctx = document.getElementById("chart-topen");
+    var myChart = new Chart(ctx, {
+        type: 'line',
+        data: data,
+        options: {
+            maintainAspectRatio: false,
+            responsive: true,
+            legend: {
+                display: false
+            },
+            layout: {
+                padding: {
+                    left: 5,
+                    right: 5,
+                    top: 5,
+                    bottom: 5
+                }
+            },
+            scales: {
+                xAxes: [{
+                    display: false,
+                }],
+                yAxes: [{
+                    display: false,
+                    ticks: {
+                        beginAtZero: true
+                    }
+                }]
+            }
+            }
+        });
+
+
+    var totalizer = {
+        id: 'totalizer',
+
+        beforeUpdate: chart => {
+            let totals = {}
+            let utmost = 0
+
+            chart.data.datasets.forEach((dataset, datasetIndex) => {
+                if (chart.isDatasetVisible(datasetIndex) && dataset.type === "bar") {
+                    utmost = datasetIndex
+                    dataset.data.forEach((value, index) => {
+                        totals[index] = (totals[index] || 0) + value
+                    })
+                }
+            })
+
+            chart.$totalizer = {
+                totals: totals,
+                utmost: utmost
+            }
+        }
+    }
+
+
+    var data = {
+        labels: {{.GraphLabel}},
+        datasets: [
+            {   
+                type: 'line',
+                label: 'Máximo',
+                fill: false,
+                borderColor: "rgba(230,105,79,.5)",
+                backgroundColor: "rgba(230,105,79,.5)",
+                pointStrokeColor: "#fff",
+                pointBackgroundColor: "rgba(230,105,79,.5)",
+                pointBorderWidth: 1,
+                data: {{.GraphMaxData}},
+                borderWidth: 2,
+                datalabels: {
+                    display: false
+                }
+            },
+            {
+                type: 'line',
+                label: 'Média',
+                fill: false,
+                borderColor: "rgba(143,161,179,1)",
+                backgroundColor: "rgba(143,161,179,1)",
+                pointStrokeColor: "#fff",
+                pointBackgroundColor: "rgba(143,161,179,1)",
+                pointBorderWidth: 1,
+                data: {{.GraphAvgData}},
+                borderWidth: 2,
+                datalabels: {
+                    display: false
+                }
+            },
+            {
+                type: 'bar',
+                stack: 'Stack 0',
+                label: "Não especificado",
+                backgroundColor: window.chartColors.grey,
+                data: {{.GraphUnspecified}}
+            },
+            {
+                type: 'bar',
+                stack: 'Stack 0',
+                label: "Incidentes",
+                backgroundColor: window.chartColors.red2,
+                data: {{.GraphIncident}}
+            },
+            {
+                type: 'bar',
+                stack: 'Stack 0',
+                label: "Requisições",
+                backgroundColor: window.chartColors.red,
+                data: {{.GraphRequest}}
+            }
+        ]
+    };
+
+    var ctx = document.getElementById("myChart");
+    var myChart = new Chart(ctx, {
+        type: 'bar',
+        data: data,
+        options: {
+            maintainAspectRatio: false,
+            legend: {
+                display: false
+            },
+            scales: {
+                xAxes: [{
+                    stacked: true
+                }],
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true
+                    }
+                }]
+            },
+            plugins: {
+                datalabels: {
+                    color: 'black',
+                    formatter: (value, ctx) => {
+                        const total = ctx.chart.$totalizer.totals[ctx.dataIndex]
+                        return total
+                    },
+                    align: 'end',
+                    anchor: 'end',
+                    display: function(ctx) {
+                        return ctx.datasetIndex === ctx.chart.$totalizer.utmost
+                    }
+                }
+            }
+        },
+        plugins: [totalizer]
+    });
+
+
+    var dataWeekMax = {
+        labels: {{.GraphLabelWeekMax}},
+        datasets: [
+            {
+                type: 'bar',
+                label: "Chamados",
+                borderColor: 'rgba(230,105,79,1)',
+                backgroundColor: 'rgba(230,105,79,1)',
+                pointStrokeColor: '#fff',
+                pointBackgroundColor: 'rgba(230,105,79,1)',
+                pointBorderWidth: 1,
+                data: {{.GraphDataWeekMax}}
+            }
+        ]
+    };
+
+    var ctx = document.getElementById("myChartWeekMax");
+    var myChart = new Chart(ctx, {
+        type: 'bar',
+        data: dataWeekMax,
+        options: {
+            maintainAspectRatio: false,
+            legend: {
+                display: false
+            },
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true
+                    }
+                }]
+            }
+            }
+        });
+</script>

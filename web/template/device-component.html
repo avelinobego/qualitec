@@ -1,0 +1,50 @@
+{{define "DeviceTop"}}
+<div class="card-body">
+    <p class="card-text">
+        <div class="card-group">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{.Device.CustomerDescription}}</h5>
+                    <p class="card-text">
+                        {{.Device.CustomerAddress}}{{if ne 0 .Device.CustomerAddressNr}}, {{.Device.CustomerAddressNr}}{{end}}{{if ne .Device.CustomerComplement ""}}, {{.Device.CustomerComplement}}{{end}}{{if ne .Device.CustomerNeighborhood ""}}, {{.Device.CustomerNeighborhood}}{{end}}<br>
+                        Contato: {{.Device.CustomerContact}}<br>
+                        Telefone: {{.Device.CustomerPhone}}
+                    </p>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    Last Reading
+                </div>
+                <ul class="list-group list-group-flush">
+                    {{range .DeviceRealTime}}
+                        <li class="py-1 list-group-item d-flex">
+                            <span style="flex: 1;">{{.ChannelDescription}}</span>
+                            <span style="flex: 1;">{{FormatFloat .Value (Uint8ToInt .DecimalView)}} {{.ChannelUnit}}
+                                <span class="badge badge-light badge-pill float-right">{{.Channel}}</span>
+                            </span>
+                            
+                        </li>
+                    {{end}}
+                    <li class="py-1 list-group-item d-flex">
+                        <span style="flex: 1;">Signal</span>
+                        <span style="flex: 1;">{{(index .DeviceRealTime 0).Signals}}</span>
+                    </li>
+                    <li class="py-1 list-group-item d-flex">
+                        <span style="flex: 1;">Voltage</span>
+                        <span style="flex: 1;">{{(index .DeviceRealTime 0).Voltage}}</span>
+                    </li>
+                </ul>
+                <div class="card-footer text-muted">
+                    Updated: {{FormatTime (index .DeviceRealTime 0).Time}}
+                    {{if (index .DeviceRealTime 0).IsOnline}}
+                        <sup><span class="badge badge-success">Online</span></sup>
+                    {{else}}
+                        <sup><span class="badge badge-secondary">Offline</span></sup>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </p>
+</div>
+{{end}}

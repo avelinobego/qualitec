@@ -1,0 +1,371 @@
+$font-size-base: 0.95rem;
+$font-family-base: 'Roboto', sans-serif;
+$table-cell-padding: .55rem;
+$link-color: #17a2b8;
+$enable-shadows: true;
+
+$input-btn-padding-y: .300rem;
+$input-btn-padding-x: .60rem;
+
+@import "bootstrap/bootstrap";
+
+body {
+    background-color: #e4e5e6;
+}
+
+select.custom-select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    text-indent: 1px;
+    text-overflow: '';
+}
+
+mark {
+    padding: 0;
+}
+
+#c-title {
+    display: none;
+}
+
+#c-loading-info {
+    background-color: yellow;
+    position: fixed;
+    left: 49%;
+    top: 10%;
+    padding: 1px 8px 1px 8px;
+}
+
+input[type="search"] {
+    -webkit-appearance: searchfield;
+}
+
+input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: searchfield-cancel-button;
+}
+
+/* Top Bar */
+#mainnavbar {
+    .navbar-brand {
+        img {
+            width: 75px;
+            height: 20px;
+        }
+    }
+    li.active {
+        background-color: #f3f1f1;
+    }
+    @include media-breakpoint-up(lg) {
+        .navbar-brand {
+            position: fixed;
+        }
+        form>div.input-group {
+            min-width: 300px;
+        }
+    }
+}
+
+/* Left Navbar */
+ #mainnav {
+	@include media-breakpoint-down(md) {
+		ul li a i {
+			width: 20px;
+		}
+	}
+	@include media-breakpoint-up(lg) {
+        top: 54px;
+        left: 0;
+        /*width: 116px;*/
+        height: 100%;
+        position: fixed;
+        background-color: #f8f9fa!important;
+        border-right: 1px solid #e7e7e7;
+        box-shadow: $box-shadow-sm;
+		ul li {
+			float: initial !important;
+			border-bottom: 1px solid #e7e7e7;
+			&:first-child {
+				border-top:  1px solid #e7e7e7;
+			}
+			a {
+                text-align: center;
+                padding-top: .9rem;
+                padding-bottom: .9rem;
+                padding-left: .9rem;
+                padding-right: 0.9rem;
+				i {
+					display: block;				
+				}
+			}
+		}
+		.navbar-collapse {
+			padding: 0px !important;
+		}
+		
+	}
+}
+
+/* Content */
+@include media-breakpoint-down(xs) {
+    #content>.card {
+        margin-left: -($grid-gutter-width / 2);
+        margin-right: -($grid-gutter-width / 2);
+    }
+}
+
+@include media-breakpoint-up(lg) {
+    .container-fluid {
+        max-width: 1280px;
+        padding-left: 119px;
+        margin-left: 0;
+        &#container-navbar {
+            margin-left: -16px;
+        }
+    }
+}
+
+@mixin no-more-tables() {
+    table, thead, tbody, th, td, tr {
+        display: block;
+    }
+    /* Hide table headers (but not display: none;, for accessibility) */
+    thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+    tbody tr {
+        margin-bottom: 20px;
+        border: 1px solid #e7e7e7;
+        box-shadow: $box-shadow-sm;
+    }
+    td {
+        border: none;
+        border-bottom: 1px solid #eee;
+        position: relative;
+        /*padding-left: 30% !important;*/
+        text-align: left;
+    }
+    /* Now like a table header */
+    /* td:before {
+        position: absolute;
+        /* Top/left values mimic padding */
+        /*top: 8px;
+        left: 8px;
+        padding-right: 10px;
+        white-space: nowrap;
+        text-align: left;
+        font-weight: bold;
+    }*/
+    /* Label the data */
+    /*td:befre {
+        content: attr(data-title);
+    }*/
+}
+
+@include media-breakpoint-down(xs) {
+    #no-more-tables {
+        @include no-more-tables();
+    }
+}
+
+@include media-breakpoint-down(sm) {
+    #no-more-tables-sm {
+        @include no-more-tables();
+    }
+}
+
+#success-alert {
+    display: none;
+    position: fixed;
+    left: 49%;
+    top: 50%;
+}
+
+.pagination {
+    margin-top: 10px !important;
+    margin-bottom: 10px !important;
+}
+
+.white-pre {
+    white-space: pre-line;
+}
+
+/* Dashboard */
+.dashboard {
+    .card-deck {
+        margin-left: 0 !important;
+        .card {
+            margin-left: 0 !important;
+            margin-bottom: 15px !important;
+        }
+    }
+}
+
+/* Tickets */
+
+table#tickets td.desc {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@include media-breakpoint-up(sm) {
+	table#tickets {
+		table-layout: fixed;
+		td.id {
+			vertical-align: middle;
+			width: 70px;
+			text-align: center;
+		}
+		td.status {
+			width: 140px;
+			text-align: center;
+		}
+	}
+}
+
+/* Computers */
+table.computers {
+    td.desc {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
+
+@include media-breakpoint-up(sm) {
+	table.computers {
+		table-layout: fixed;
+		tr>.tag {
+			width: 150px;
+			text-align: center;
+		}
+		td.tag {
+			vertical-align: middle;
+		}
+		tr>.status, tr>.lastconnection {
+			text-align: center;
+			width: 90px;
+		}
+    }
+    
+    table.computer-view-geral tr td:first-child {
+        width: 230px;
+    }
+}
+
+@include media-breakpoint-up(md) {
+    #asset-computer-menu .dropdown .dropdown-menu {
+        display: block !important;
+        position: static !important;
+        box-shadow: none !important;
+    }
+}
+
+/* Printers */
+table.printers td.desc {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+@include media-breakpoint-up(md) {
+	table.printers {
+		table-layout: fixed;
+		tr>.tag {
+			width: 150px;
+			text-align: center;
+		}
+		td.tag {
+			vertical-align: middle;
+		}
+		tr>.depto {
+			width: 160px;
+		}
+		tr>.conexao {
+			width: 160px;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+		tr>.status {
+			text-align: center;
+			width: 90px;
+		}
+	}
+}
+
+/* Documents */
+.doc {
+    a {
+        color: inherit;
+        text-decoration: none;
+        display: table;
+        &.a1 {
+            font-weight: bold;
+            margin-top: 4px;
+        }
+        &.a2 {
+            margin-left: 15px;
+        }
+        &.a3 {
+            margin-left: 30px;
+        }
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+    .t1 {
+        font-size: x-large;
+    }
+    .t2 {
+        margin-left: 20px;
+    }
+    .t3 {
+        margin-left: 40px;
+    }
+    .t4 {
+        margin-left: 60px;
+    }
+    p {
+        line-height: 90%;
+        margin-bottom: .8rem;
+    }
+    .p1 {
+        margin-left: 20px;
+    }
+    .p2 {
+        margin-left: 40px;
+    }
+    .p3 {
+        margin-left: 60px;
+    }
+    .p4 {
+        margin-left: 80px;
+    }
+    .topologia {
+        font-family: 'Courier New';
+        font-size: 14px;
+        line-height: 100%;
+        padding: 0;
+        background-color: white;
+        border: none;
+        overflow: visible;
+    }
+    // Corrige o problema do link hash usando navbar fixed top
+    *[id]:before {
+        display: block;
+        content: " ";
+        margin-top: -75px;
+        height: 75px;
+        visibility: hidden;
+    }
+}
+
+/* Site */
+.site-internet-table {
+    width: auto !important;
+    th.site {
+        width: 150px;
+    }
+    th.ipv4 {
+        width: 200px;
+    }
+}

@@ -1,0 +1,18 @@
+{{define "search"}}
+<form class="form c-search mb-2">
+    <div class="input-group">
+        <input type="text" class="form-control" name="q" value="{{.}}">
+        <div class="input-group-append">
+            <button type="submit" class="btn btn-info" aria-label="Buscar">
+                <i class="fa fa-search"></i>
+            </button>
+        </div>
+    </div>
+</form>
+{{end}}
+
+{{define "filter_badge"}}
+<span class="badge badge-secondary mb-2">
+    {{.Text}} <a href={{.URL}} class="c-ajax" style="color: white"><i class="fa fa-times" aria-hidden="true"></i></a>
+</span>
+{{end}}

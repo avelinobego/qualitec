@@ -1,0 +1,8 @@
+{
+  "DB": "tcp(localhost:3306)/qualitec",
+  "DBEarth": "tcp(localhost:3306)/earth1006",
+  "SITE": "localhost",
+  "USER": "qualitec",
+  "PASSWD": "Fuj24asTap0P7id_ItlF",
+  "WEB_ROOT": "web"
+}
