@@ -3,11 +3,12 @@ package main
 import (
 	"compress/gzip"
 	"crypto/tls"
+	"embed"
 	"encoding/json"
+	"fmt"
 	"html/template"
-	"io/ioutil"
+	"io/fs"
 	"log"
-	"path/filepath"
 	"strings"
 
 	"net/http"
@@ -41,19 +42,32 @@ type configuration struct {
 	Web_Root string
 }
 
+func nocacheHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Cache-Control", "no-cache,must-revalidate")
+		next.ServeHTTP(w, r)
+	})
+}
+
+//go:embed web/template
+var templatesHTML embed.FS
+
+//go:embed web/html
+var staticFiles embed.FS
+
 func main() {
 	var err error
+	var file *os.File
 
 	// Loading configuration
 	log.Println("Carregando configurações...")
-	file, err := os.Open("conf.json")
-	if err != nil {
+	if file, err = os.Open("conf.json"); err != nil {
 		log.Fatal(err)
 	}
+
 	decoder := json.NewDecoder(file)
 	cfg := configuration{}
-	err = decoder.Decode(&cfg)
-	if err != nil {
+	if err = decoder.Decode(&cfg); err != nil {
 		log.Fatal(err)
 	}
 
@@ -95,23 +109,11 @@ func main() {
 		},
 	})
 
-	filepath.Walk(cfg.Web_Root+"/template", func(path string, f os.FileInfo, err error) error {
-		if err != nil {
-			panic(err)
-		}
-		if f.IsDir() {
-			return nil
-		}
-
-		buffer, err := ioutil.ReadFile(path)
-		if err != nil {
-			panic(err)
-		}
-
-		t.New(f.Name()).Parse(string(buffer))
-		log.Println(f.Name())
-		return nil
-	})
+	if templatesNames, err := fs.Glob(templatesHTML, "web/template/*.html"); err == nil {
+		t.ParseFS(templatesHTML, templatesNames...)
+	} else {
+		log.Fatal(err)
+	}
 
 	log.Printf("Conectando banco de dados %s\n", cfg.DB)
 	db, _ := sqlx.Open("mysql", cfg.User+":"+cfg.Passwd+"@"+cfg.DB+"?parseTime=true&loc=UTC")
@@ -135,19 +137,25 @@ func main() {
 	ajax.Handle("/", controller.HandlerSession(ctx, controller.DeviceList))
 	ajax.Handle("/dashboard", controller.HandlerSession(ctx, controller.DeviceList))
 	ajax.Handle("/devices", controller.HandlerSession(ctx, controller.DeviceList))
-	ajax.Handle("/device/{devflag}/{sub:(?:graph|history|hour|day|week|month)}", controller.HandlerSession(ctx, controller.DeviceView))
+	ajax.Handle("/device/{devflag}/{sub:(?:graph|history)}", controller.HandlerSession(ctx, controller.DeviceView))
+	ajax.Handle("/device/graph/{devflag}/{sub:(?:hour|day|week|month)}", controller.HandlerSession(ctx, controller.DeviceGraph))
+
 	ajax.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		controller.NotFound(ctx, w, r)
 	})
 
-	fileServer := http.FileServer(http.Dir(cfg.Web_Root + "/html"))
+	if sub, err := fs.Sub(staticFiles, "web/html"); err == nil {
+		fileServer := http.FileServer(http.FS(sub))
+		routes.Handle("/favicon.ico", fileServer)
+		routes.Handle("/css/{file}", fileServer)
+		routes.Handle("/fonts/{file}", fileServer)
+		routes.Handle("/images/{file}", fileServer)
+		routes.Handle("/img/{file}", fileServer)
+		routes.Handle("/js/{file}", fileServer)
+	} else {
+		log.Fatal(err)
+	}
 
-	routes.Handle("/favicon.ico", fileServer)
-	routes.Handle("/css/{file}", fileServer)
-	routes.Handle("/fonts/{file}", fileServer)
-	routes.Handle("/images/{file}", fileServer)
-	routes.Handle("/img/{file}", fileServer)
-	routes.Handle("/js/{file}", fileServer)
 	routes.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		controller.Login(ctx, w, r)
 	})
@@ -169,9 +177,10 @@ func main() {
 	}
 
 	go func() {
-		err := http.ListenAndServe(":80", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			http.Redirect(w, req, "https://"+cfg.Site+req.RequestURI, http.StatusTemporaryRedirect)
-		}))
+		err := http.ListenAndServe(":80", nocacheHandler(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			http.Redirect(w, req, fmt.Sprintf("https://%s%s", cfg.Site, req.RequestURI), http.StatusTemporaryRedirect)
+		})))
+
 		if err != nil {
 			log.Println(err)
 		}

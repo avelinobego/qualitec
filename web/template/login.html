@@ -1,55 +1,56 @@
 {{template "header"}}
 <body class="d-flex justify-content-center align-items-sm-center text-center">
-<style>
-html, body {
-    height: 100%;
-}
+	<style>
+		html,
+		body {
+			height: 100%;
+		}
 
-body {
-    background-color: #f5f5f5;
-}
+		body {
+			background-color: #f5f5f5;
+		}
 
-.card {
-    width: 400px;
-}
+		.card {
+			width: 400px;
+		}
 
-.card-body {
-    padding: 2rem;
-}
-</style>
-<div class="card shadow-sm">
-    <div class="card-body">
-        <img src="/images/logo2.png" class="mb-4" width="150">
-        <h1 class="h4 mb-4">Login</h1>
-        {{if eq .Status "1"}}
-        <div class="alert alert-danger" role="alert">
-            <i class="fa fa-exclamation-circle" aria-hidden="true"></i>
-            Usuário ou senha inválida!
-        </div>
-        {{end}}
-        <form action="/signin" method="post" id="form-signin">
-            <input type="hidden" name="next" value="{{.Next}}">
-            <div class="form-group">
-                <div class="input-group">
-                    <label for="username" class="sr-only">Endereço de e-mail</label>
-                    <div class="input-group-prepend">
-                        <div class="input-group-text"><i class="fa fa-fw fa-user" aria-hidden="true"></i></div>
-                    </div>
-                    <input type="text" class="form-control" name="username" id="username" placeholder="E-mail" autofocus>
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="input-group">
-                    <label for="password" class="sr-only">Senha</label>
-                    <div class="input-group-prepend">
-                        <div class="input-group-text"><i class="fa fa-fw fa-lock" aria-hidden="true"></i></div>
-                    </div>
-                    <input type="password" name="password" id="password" class="form-control" placeholder="Senha">
-                </div>
-            </div>
-            <button class="btn btn-lg btn-primary btn-block" type="submit">Entrar</button>
-        </form>
-    </div>
-</div>
+		.card-body {
+			padding: 2rem;
+		}
+	</style>
+	<div class="card shadow-sm">
+		<div class="card-body">
+			<img src="/images/logo2.png" class="mb-4" width="150">
+			<h1 class="h4 mb-4">Login</h1>
+{{if eq .Status "1"}}
+			<div class="alert alert-danger" role="alert">
+				<i class="fa fa-exclamation-circle" aria-hidden="true"></i>
+				Usuário ou senha inválida!
+			</div>
+{{end}}
+			<form action="/signin" method="post" id="form-signin">
+				<input type="hidden" name="next" value="{{.Next}}">
+				<div class="form-group">
+					<div class="input-group">
+						<label for="username" class="sr-only">Endereço de e-mail</label>
+						<div class="input-group-prepend">
+							<div class="input-group-text"><i class="fa fa-fw fa-user" aria-hidden="true"></i></div>
+						</div>
+						<input type="text" class="form-control" name="username" id="username" placeholder="E-mail" autofocus>
+					</div>
+				</div>
+				<div class="form-group">
+					<div class="input-group">
+						<label for="password" class="sr-only">Senha</label>
+						<div class="input-group-prepend">
+							<div class="input-group-text"><i class="fa fa-fw fa-lock" aria-hidden="true"></i></div>
+						</div>
+						<input type="password" name="password" id="password" class="form-control" placeholder="Senha">
+					</div>
+				</div>
+				<button class="btn btn-lg btn-primary btn-block" type="submit">Entrar</button>
+			</form>
+		</div>
+	</div>
 </body>
 </html>

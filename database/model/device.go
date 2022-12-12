@@ -164,7 +164,7 @@ JOIN qualitec.device_channel ON (qualitec.device_channel.device_id = qualitec.de
 JOIN mpm6861.chl_data_all_%[1]s _all ON (_all.channel = qualitec.device_channel.channel)
 WHERE qualitec.device.devflag = ? AND qualitec.device_channel.channel = ?
 %[2]s
-   AND _all.id > (SELECT CAST(MAX(_inner.id) AS SIGNED) FROM mpm6861.chl_data_all_%[1]s _inner) - 300
+LIMIT 100
 `
 
 func DeviceHistoryGetByDevflag(sub string, db database.Select, dev *Device, channel string) (h []DeviceHistory, err error) {
@@ -172,11 +172,20 @@ func DeviceHistoryGetByDevflag(sub string, db database.Select, dev *Device, chan
 	if dev.Model == ModelMpm6861 {
 
 		if sub == "day" {
-			predicate = ""
+			predicate = `
+			AND date(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) = date(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo')) 
+			AND HOUR(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) >= HOUR(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo'))
+			`
 		} else if sub == "week" {
-			predicate = ""
+			predicate = `
+			AND YEAR(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) = YEAR(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo')) 
+			AND WEEK(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) = WEEK(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo')) 
+			`
 		} else if sub == "month" {
-			predicate = ""
+			predicate = `
+			AND YEAR(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) = YEAR(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo')) 
+			AND MONTH(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) = MONTH(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo')) 
+			`
 		} else {
 			// Padrão é hour
 			predicate = `

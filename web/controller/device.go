@@ -2,7 +2,6 @@ package controller
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"net/http"
 	"strconv"
@@ -176,53 +175,60 @@ func DeviceView(c *Context, w http.ResponseWriter, r *http.Request) (int, error)
 	var erro error = nil
 
 	if sub == "history" {
-		status, erro = history(dr, device, c, w, r)
+		status, erro = historyView(dr, device, c, w, r)
 	} else {
-		status, erro = graph(sub, dr, device, c, w)
+		status, erro = graphView(dr, device, c, w)
 	}
 
 	return status, erro
 
 }
 
-func graph(sub string,
+func graphView(
 	dr []model.DeviceViewRealTime,
 	deviceView model.DeviceView,
 	c *Context,
 	w http.ResponseWriter) (int, error) {
 
-	labels := []string{}
-	type deviceType struct {
-		Dataset     []string
-		Description string
-	}
-	device_slice := []deviceType{}
+	// labels := []string{}
+	// type deviceType struct {
+	// 	Dataset     []string
+	// 	Description string
+	// 	Color       string
+	// }
+	// device_slice := []deviceType{}
 
 	//ChannelDescription
 
-	var err error
+	// var err error
 
-	for _, channel := range dr {
-		dataset := []string{}
+	// for device_number, channel := range dr {
 
-		hmodel, err := model.DeviceHistoryGetByDevflag(sub, c.DBEarth, &deviceView.Device, channel.Channel)
-		if err != nil {
-			return http.StatusInternalServerError, err
-		}
+	// 	dataset := []string{}
 
-		for _, m := range hmodel {
-			labels = append(labels, fmt.Sprintf("%v", m.Time))
-			dataset = append(dataset, fmt.Sprintf("%f", m.Value))
-		}
+	// 	hmodel, err := model.DeviceHistoryGetByDevflag(sub, c.DBEarth, &deviceView.Device, channel.Channel)
+	// 	if err != nil {
+	// 		return http.StatusInternalServerError, err
+	// 	}
 
-		if len(dataset) > 0 {
-			device_slice = append(device_slice, deviceType{Dataset: dataset, Description: channel.ChannelDescription})
-		}
-	}
+	// 	for _, m := range hmodel {
+	// 		labels = append(labels, fmt.Sprintf("%v", m.Time))
+	// 		dataset = append(dataset, fmt.Sprintf("%f", m.Value))
+	// 	}
+
+	// 	if len(dataset) > 0 {
+	// 		device_slice = append(device_slice,
+	// 			deviceType{
+	// 				Dataset:     dataset,
+	// 				Description: channel.ChannelDescription,
+	// 				Color:       color(device_number),
+	// 			})
+	// 	}
+	// }
 
 	data := map[string]interface{}{
-		"Labels":         labels,
-		"Devices":        device_slice,
+		// "Labels":         labels,
+		// "Devices":        device_slice,
 		"URL":            c.URL,
 		"Device":         deviceView,
 		"DeviceRealTime": dr,
@@ -232,7 +238,14 @@ func graph(sub string,
 		// "Data":           dataset,
 	}
 
-	err = c.Template.ExecuteTemplate(w, "device-graph.html", data)
+	// w.Header().Set("Content-Type", "application/json")
+	// valor, err := json.Marshal(data)
+	// if err != nil {
+	// 	return http.StatusInternalServerError, err
+	// }
+	// w.Write(valor)
+
+	err := c.Template.ExecuteTemplate(w, "device-graph.html", data)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -240,7 +253,7 @@ func graph(sub string,
 	return http.StatusOK, nil
 }
 
-func history(dr []model.DeviceViewRealTime, device model.DeviceView, c *Context, w http.ResponseWriter, r *http.Request) (int, error) {
+func historyView(dr []model.DeviceViewRealTime, device model.DeviceView, c *Context, w http.ResponseWriter, r *http.Request) (int, error) {
 
 	query := r.URL.Query()
 
