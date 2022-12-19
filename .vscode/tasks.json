@@ -1,0 +1,32 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "options": {
+    "env": {
+      "GOOS": "linux",
+      "GOARCH": "amd64",
+      "CGO_ENABLED": "0",
+    }
+  },
+  "tasks": [
+    {
+      "label": "build",
+      "type": "shell",
+      "command": "go",
+      "args": [
+        "build",
+        "-ldflags",
+        "-s -w -extldflags \"-static\"",
+        "-o",
+        "telemetria",
+        "-tags",
+        "dev"
+      ],
+      "problemMatcher": ["$go"],
+      "group": {
+        "isDefault": false
+      }
+    }
+  ]
+}

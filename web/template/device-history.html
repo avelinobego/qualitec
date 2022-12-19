@@ -59,9 +59,14 @@
                     <tr>
                         <td>{{FormatTime .Time}}</td>
                         {{$channelComma := (splitList "," .Channel)}}
-                        {{range $i, $v := (splitList "," .Value)}}
-                            {{$ch := index $channels (index $channelComma $i)}}
-                            <td>{{FormatFloat (MulFloat64 (float64 $v) $ch.ConversionFactor) (Uint8ToInt $ch.DecimalView)}}</td>
+                        {{if .Value}}
+                            {{range $i, $v := (splitList "," .Value)}}
+                                {{$ch := index $channels (index $channelComma $i)}}
+                                <td>{{FormatFloat (MulFloat64 (float64 $v) $ch.ConversionFactor) (Uint8ToInt $ch.DecimalView)}}</td>
+                            {{end}}
+                        {{else}}
+                            <td>No information</td>
+                            <td>No information</td>
                         {{end}}
                         <td>{{.Signals}}</td>
                         <td>{{.Voltage}}</td>

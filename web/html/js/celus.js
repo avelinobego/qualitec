@@ -352,7 +352,7 @@ var sitesSelecteds = null;
 
 function initBase() {
   drop = $("#site-menu");
-  //dropDown = drop.find('.dropdown');
+  dropDown = drop.find('.dropdown');
   dropDownMenu = $("#site-modal");
   input = dropDownMenu.find("input");
   list = dropDownMenu.find("table");
@@ -426,6 +426,7 @@ function initBase() {
 
 function addSite(id, text) {
   var u = new URI(window.location);
+  console.log(u);
   u.addSearch("s", id);
   get_tab(u.toString());
   dropDownMenu.modal("hide"); //.removeClass('show');

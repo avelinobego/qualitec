@@ -171,12 +171,7 @@ func DeviceHistoryGetByDevflag(sub string, db database.Select, dev *Device, chan
 	var predicate string
 	if dev.Model == ModelMpm6861 {
 
-		if sub == "day" {
-			predicate = `
-			AND date(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) = date(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo')) 
-			AND HOUR(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) >= HOUR(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo'))
-			`
-		} else if sub == "week" {
+		if sub == "week" {
 			predicate = `
 			AND YEAR(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) = YEAR(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo')) 
 			AND WEEK(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) = WEEK(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo')) 
@@ -187,11 +182,10 @@ func DeviceHistoryGetByDevflag(sub string, db database.Select, dev *Device, chan
 			AND MONTH(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) = MONTH(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo')) 
 			`
 		} else {
-			// Padrão é hour
+			// Padrão é day
 			predicate = `
 			AND date(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) = date(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo')) 
-			AND HOUR(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) = HOUR(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo'))
-			AND minute(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) >= minute(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo'))
+			AND HOUR(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) >= HOUR(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo'))
 			`
 		}
 		predicate = fmt.Sprintf(SQL_BASE, dev.Devflag, predicate)
@@ -224,10 +218,10 @@ ALTER TABLE `device`
 
 type DeviceHistory2 struct {
 	Time    *time.Time
-	Channel string
-	Value   string
-	Signals string
-	Voltage string
+	Channel *string
+	Value   *string
+	Signals *string
+	Voltage *string
 }
 
 func DeviceHistory2Count(db database.Get, dev *Device, di, de *time.Time) (count int, err error) {
@@ -268,7 +262,7 @@ func DeviceHistory2GetByDevflag(db database.Select, dev *Device, dr []DeviceView
 		channels := "'"
 		for _, channel := range dr {
 			channels += channel.Channel + ","
-			when += "MAX(CASE WHEN CHANNEL = " + channel.Channel + " THEN value END), ',', "
+			when += "MAX(CASE WHEN CHANNEL = " + channel.Channel + " THEN value ELSE 0 END), ',', "
 		}
 
 		sql += strings.TrimSuffix(channels, ",") + "'" + " AS channel," +
@@ -279,14 +273,14 @@ func DeviceHistory2GetByDevflag(db database.Select, dev *Device, dr []DeviceView
 
 		if di != nil && de != nil {
 			sql += `WHERE time >= CONVERT_TZ(?, 'America/Sao_Paulo', 'UTC') AND time <= CONVERT_TZ(?, 'America/Sao_Paulo', 'UTC')
-				GROUP BY time
-				ORDER by time DESC, id DESC
+				GROUP BY time, channel, value, signals, voltage
+				ORDER by time DESC
 				LIMIT %d, %d`
 			sql = fmt.Sprintf(sql, dev.Devflag, limitFirst, limitTotal)
 			err = db.Select(&dh, sql, di, de)
 		} else {
-			sql += `GROUP BY time
-				ORDER by time DESC, id DESC
+			sql += `GROUP BY time, channel, value, signals, voltage
+				ORDER by time DESC
 				LIMIT %d, %d`
 			sql = fmt.Sprintf(sql, dev.Devflag, limitFirst, limitTotal)
 			err = db.Select(&dh, sql)

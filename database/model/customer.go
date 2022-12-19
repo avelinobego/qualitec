@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"strconv"
 
 	"celus-ti.com.br/qualitec/database"
@@ -46,5 +47,27 @@ func CustomerViewListActive(db database.Select, userID UserID) (s []Customer, er
 		WHERE customer.active <> 0 AND user_device.user_id = ?
 		GROUP by customer.id
 		ORDER BY customer.description`, userID)
+	return
+}
+
+func CustomerById(db database.Select, id CustomerID) (result *Customer, err error) {
+	temp := []Customer{}
+	err = db.Select(&temp, `SELECT
+		customer.id,
+		customer.description,
+		customer.active
+		FROM customer
+		WHERE customer.id = ?`, id)
+
+	if len(temp) > 1 {
+		result = nil
+		err = errors.New("more than one result finded")
+	} else if len(temp) == 0 {
+		result = nil
+		err = errors.New("customer not found")
+	} else {
+		result = &temp[0]
+	}
+
 	return
 }

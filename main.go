@@ -138,7 +138,7 @@ func main() {
 	ajax.Handle("/dashboard", controller.HandlerSession(ctx, controller.DeviceList))
 	ajax.Handle("/devices", controller.HandlerSession(ctx, controller.DeviceList))
 	ajax.Handle("/device/{devflag}/{sub:(?:graph|history)}", controller.HandlerSession(ctx, controller.DeviceView))
-	ajax.Handle("/device/graph/{devflag}/{sub:(?:hour|day|week|month)}", controller.HandlerSession(ctx, controller.DeviceGraph))
+	ajax.Handle("/device/graph/{devflag}/{sub:(?:day|week|month)}", controller.HandlerSession(ctx, controller.DeviceGraph))
 
 	ajax.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		controller.NotFound(ctx, w, r)

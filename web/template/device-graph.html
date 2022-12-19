@@ -20,8 +20,6 @@
 	<div class="card-body">
 		<div class="btn-toolbar" role="toolbar">
 			<div class="btn-group mr-2" role="group">
-				<button type="button" func-c-dest="mostrar" data-c-url={{.URL.GenURLBase (printf "/device/graph/%s/hour"
-					.Device.Devflag)}} class="c-ajax btn btn-secondary">Hour</button>
 				<button type="button" func-c-dest="mostrar" data-c-url={{.URL.GenURLBase (printf "/device/graph/%s/day"
 					.Device.Devflag)}} class="c-ajax btn btn-secondary">Day</button>
 				<button type="button" func-c-dest="mostrar" data-c-url={{.URL.GenURLBase (printf "/device/graph/%s/week"
@@ -60,7 +58,7 @@
   $(document).ready(function(){
 			$.ajax({
 				type: "POST",
-				url: '{{.URL.GenURLBase (printf "/device/graph/%s/hour" .Device.Devflag)}}',
+				url: '{{.URL.GenURLBase (printf "/device/graph/%s/day" .Device.Devflag)}}',
 				cache: false,
 			}).done(function (data, textStatus, jqXHR) {
 				mostrar(data);

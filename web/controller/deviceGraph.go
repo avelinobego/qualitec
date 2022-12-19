@@ -44,6 +44,7 @@ func DeviceGraph(c *Context, w http.ResponseWriter, r *http.Request) (int, error
 		BorderColor string   `json:"borderColor"`
 		Fill        bool     `json:"fill"`
 		Tension     float64  `json:"tension"`
+		PointRadius int      `json:"pointRadius"`
 	}
 	dataset := []datasetConfig{}
 
@@ -72,6 +73,7 @@ func DeviceGraph(c *Context, w http.ResponseWriter, r *http.Request) (int, error
 					BorderColor: color(channel.GraphColor),
 					Fill:        false,
 					Tension:     0.1,
+					PointRadius: 0,
 				})
 		}
 	}
