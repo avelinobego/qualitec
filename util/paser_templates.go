@@ -1,45 +1,35 @@
 package util
 
 import (
+	"embed"
 	"errors"
+	"fmt"
 	"html/template"
 	"io"
-	"os"
 )
 
-func Templates(name string, fs template.FuncMap, files ...string) (result *template.Template) {
-	result = template.New(name)
-	for _, n := range files {
-		b, err := os.ReadFile(n)
-		if err != nil {
-			panic(err)
-		}
-		result.Funcs(fs)
-		result, err = result.Parse(string(b))
-		if err != nil {
-			panic(err)
-		}
-	}
-	return
+type TempleWrapper struct {
+	current    *template.Template
+	templates  map[string]*template.Template
+	fileSystem embed.FS
+	functions  template.FuncMap
 }
 
-type TempleWrapper struct {
-	template.Template
-	current   *template.Template
-	templates []*template.Template
+func MakeWrapper(fileSystem embed.FS, functions template.FuncMap) (result *TempleWrapper) {
+	result = &TempleWrapper{current: nil,
+		templates:  make(map[string]*template.Template),
+		fileSystem: fileSystem,
+		functions:  functions}
+	return
 }
 
 func (w *TempleWrapper) Find(name string) (err error) {
 	err = nil
-	for _, t := range w.templates {
-		if name == t.Name() {
-			w.current = t
-			return
-		}
+	if found, ok := w.templates[name]; ok {
+		w.current = found
+		return
 	}
-	if w.current == nil {
-		err = errors.New("template not found")
-	}
+	err = fmt.Errorf("template '%s' not found", name)
 	return
 }
 
@@ -52,13 +42,21 @@ func (w *TempleWrapper) ExecuteTemplate(wr io.Writer, name string, data any) (er
 	return
 }
 
-func (w *TempleWrapper) Add(t *template.Template) {
-	w.templates = append(w.templates, t)
-}
+func (w *TempleWrapper) Add(name string, files ...string) {
+	temp := template.New(name)
+	temp.Funcs(w.functions)
+	for _, n := range files {
+		b, err := w.fileSystem.ReadFile(n)
+		if err != nil {
+			panic(err)
+		}
+		temp, err = temp.Parse(string(b))
+		if err != nil {
+			panic(err)
+		}
+		w.templates[name] = temp
+	}
 
-func MakeWrapper() (result *TempleWrapper) {
-	result = &TempleWrapper{current: template.New(""), templates: []*template.Template{}}
-	return
 }
 
 func (w *TempleWrapper) Execute(wr io.Writer, data any) (err error) {

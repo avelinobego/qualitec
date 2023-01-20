@@ -46,7 +46,7 @@ func nocacheHandler(next http.Handler) http.Handler {
 	})
 }
 
-//go:embed web/template/*
+//go:embed web/template/*.html
 var templatesHTML embed.FS
 
 //go:embed web/html
@@ -108,15 +108,30 @@ func main() {
 
 	maps.Copy(funcs, sprig.FuncMap())
 
-	w := util.MakeWrapper()
-	f := util.MakeFiles(templatesHTML)
-	w.Add(util.Templates("pagination", funcs, f("pagination.html")))
-	w.Add(util.Templates("login", funcs, f("base.html"), f("login.html")))
-	w.Add(util.Templates("device-list", funcs, f("base.html"), f("device-list.html"), f("components.html")))
-	w.Add(util.Templates("dashboard", funcs, f("base.html"), f("dashboard.html")))
-	w.Add(util.Templates("history", funcs, f("base.html"), f("device-history.html"), f("device-component.html")))
-	w.Add(util.Templates("graph", funcs, f("base.html"), f("device-graph.html"), f("device-component.html")))
-	w.Add(util.Templates("not_found", funcs, f("base.html"), f("404.html")))
+	w := util.MakeWrapper(templatesHTML, funcs)
+	w.Add("pagination",
+		"web/template/pagination.html")
+	w.Add("login",
+		"web/template/base.html",
+		"web/template/login.html")
+	w.Add("device-list",
+		"web/template/base.html",
+		"web/template/device-list.html",
+		"web/template/components.html")
+	w.Add("dashboard",
+		"web/template/base.html",
+		"web/template/dashboard.html")
+	w.Add("history",
+		"web/template/base.html",
+		"web/template/device-history.html",
+		"web/template/device-component.html")
+	w.Add("graph",
+		"web/template/base.html",
+		"web/template/device-graph.html",
+		"web/template/device-component.html")
+	w.Add("not_found",
+		"web/template/base.html",
+		"web/template/404.html")
 
 	log.Printf("Conectando banco de dados %s\n", cfg.DB)
 	db := util.Check(sqlx.Open("mysql", cfg.User+":"+cfg.Passwd+"@"+cfg.DB+"?parseTime=true&loc=UTC"))(log.Fatal)
