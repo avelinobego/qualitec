@@ -1,3 +1,4 @@
+{{define "Content"}}
 <div id="c-title">{{if ne .Device.Tag ""}}{{.Device.Tag}}, {{end}}{{.Device.Devflag}}</div>
 <div class="card mb-2 shadow-sm">
     <h4 class="card-header">
@@ -10,30 +11,28 @@
     <div class="card-header">
         <ul class="nav nav-tabs card-header-tabs">
             <li class="nav-item">
-                <a class="nav-link c-ajax" href={{.URL.GenURLBase (printf "/device/%s/graph" .Device.Devflag)}}>Graph</a>
+                <a class="nav-link c-ajax" href={{(printf "/device/graph/%s"
+                    .Device.Devflag)}}>Graph</a>
             </li>
-            <li class="nav-item">        
-                <a class="nav-link c-ajax active" href={{.URL.GenURLBase (printf "/device/%s/history" .Device.Devflag)}}>History</a>
+            <li class="nav-item">
+                <a class="nav-link c-ajax active" href={{(printf "/device/history/%s"
+                    .Device.Devflag)}}>History</a>
             </li>
         </ul>
     </div>
     <div class="card-body">
         <form class="form-inline">
-            <div class="input-group date mr-2" id="datetimepicker1" data-target-input="nearest">
-                <input type="text" class="form-control datetimepicker-input" data-target="#datetimepicker1" name="di" value={{.Qdi}}/>
-                <div class="input-group-append" data-target="#datetimepicker1" data-toggle="datetimepicker">
-                    <div class="input-group-text"><i class="fa fa-calendar"></i></div>
-                </div>
-            </div>
-
             <div class="input-group date mr-2" id="datetimepicker2" data-target-input="nearest">
-                <input type="text" class="form-control datetimepicker-input" data-target="#datetimepicker2" name="de" value={{.Qde}}/>
-                <div class="input-group-append" data-target="#datetimepicker2" data-toggle="datetimepicker">
-                    <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                <div class="input-group date mr-2" id="datetimepicker1" data-target-input="nearest">
+                    <input type="date" class="form-control datetimepicker-input" name="di" value="{{.Qdi}}" />
                 </div>
+
+                <div class="input-group date mr-2" id="datetimepicker2" data-target-input="nearest">
+                    <input type="date" class="form-control datetimepicker-input" name="de" value="{{.Qde}}" />
+                </div>
+
+                <button class="btn btn-secondary">Apply</button>
             </div>
-             
-            <button type="submit" class="btn btn btn-secondary">Apply</button>
         </form>
 
         <div>
@@ -44,50 +43,39 @@
 
         <table class="computers table table-hover mt-2">
             <thead>
-            <tr>
-                <th>Time</th>
-                {{range .DeviceRealTime}}
-                <th>{{.ChannelDescription}} ({{.ChannelUnit}})</th>
-                {{end}}
-                <th>Signal</th>
-                <th>Voltage</th>
-            </tr>
+                <tr>
+                    <th>Time</th>
+                    {{range .DeviceRealTime}}
+                    <th>{{.ChannelDescription}} ({{.ChannelUnit}})</th>
+                    {{end}}
+                    <th>Signal</th>
+                    <th>Voltage</th>
+                </tr>
             </thead>
             <tbody>
                 {{$channels := .Channels}}
                 {{range .DeviceHistory}}
-                    <tr>
-                        <td>{{FormatTime .Time}}</td>
-                        {{$channelComma := (splitList "," .Channel)}}
-                        {{if .Value}}
-                            {{range $i, $v := (splitList "," .Value)}}
-                                {{$ch := index $channels (index $channelComma $i)}}
-                                <td>{{FormatFloat (MulFloat64 (float64 $v) $ch.ConversionFactor) (Uint8ToInt $ch.DecimalView)}}</td>
-                            {{end}}
-                        {{else}}
-                            <td>No information</td>
-                            <td>No information</td>
-                        {{end}}
-                        <td>{{.Signals}}</td>
-                        <td>{{.Voltage}}</td>
-                    </tr>
+                <tr>
+                    <td>{{FormatTime .Time}}</td>
+                    {{$channelComma := (splitList "," .Channel)}}
+                    {{if .Value}}
+                    {{range $i, $v := (splitList "," .Value)}}
+                    {{$ch := index $channels (index $channelComma $i)}}
+                    <td>{{FormatFloat (MulFloat64 (float64 $v) $ch.ConversionFactor) (Uint8ToInt $ch.DecimalView)}}</td>
+                    {{end}}
+                    {{else}}
+                    <td>No information</td>
+                    <td>No information</td>
+                    {{end}}
+                    <td>{{.Signals}}</td>
+                    <td>{{.Voltage}}</td>
+                </tr>
                 {{end}}
             </tbody>
         </table>
         <div class="text-center">
             {{.Pagination}}
-        </div>        
+        </div>
     </div>
 </div>
-
-<script type="text/javascript">
-    $(function () {
-        $('#datetimepicker1').datetimepicker({
-            format: 'DD/MM/YYYY',
-        });
-        $('#datetimepicker2').datetimepicker({
-            format: 'DD/MM/YYYY',
-        });
-    });
-</script>
-
+{{end}}

@@ -23,7 +23,6 @@ window.onpopstate = function (event) {
 
 function adjust_loaded_page(obj) {
   obj.find(".c-ajax,[data-celus='ajax']").each(function () {
-    console.log($(this).prop("tagName"));
     switch ($(this).prop("tagName")) {
       case "SELECT":
         $(this).on("change", function (event) {
@@ -39,11 +38,14 @@ function adjust_loaded_page(obj) {
           $(this).find(".invalid-feedback").remove();
           $(this).find(".is-invalid").removeClass("is-invalid");
 
+          const func = __find_function($(this).attr("func-c-dest"));
+
           c_ajax_do(
-            "post",
+            $(this).attr("method"),
             $(this).attr("action"),
             $(this).serialize(),
-            $(this).attr("data-celus-history")
+            $(this).attr("data-celus-history"),
+            func
           );
 
           event.preventDefault();
@@ -51,10 +53,18 @@ function adjust_loaded_page(obj) {
         break;
 
       case "BUTTON":
-        $(this).on("click", function (event) {
-          c_ajax_load($(this));
-          event.preventDefault();
-        });
+        target = $(this).attr("target");
+        if (typeof target !== "undefined" && target !== false) {
+          $(this).on("click", function (event) {
+            $("input[name='" + target + "']").val($(this).val());
+            console.log($(this).val());
+          });
+        } else {
+          $(this).on("click", function (event) {
+            c_ajax_load($(this));
+            event.preventDefault();
+          });
+        }
         break;
 
       default:
@@ -183,18 +193,33 @@ function c_ajax_set_page(uri, data, history_mode) {
   adjust_loaded_page(obj);
 }
 
-function c_ajax_process_response_array(uri, response_array, history_mode) {
+function c_ajax_process_response_array(
+  uri,
+  response_array,
+  history_mode,
+  func
+) {
+  if (!Array.isArray(response_array)) {
+    if (func) {
+      func(response_array);
+    }
+    return;
+  }
   for (i = 0; i < response_array.length; ++i) {
     switch (response_array[i][0]) {
       case 0: // html data
-        c_ajax_set_page(uri, response_array[i][1], history_mode);
+        if (func) {
+          func(response_array);
+        } else {
+          c_ajax_set_page(uri, response_array[i][1], history_mode);
+        }
         break;
       case 10: // Mensagem de sucesso
         show_success_message(response_array[i][1]);
         break;
       case 30: // Redirecionamento GET
         in_ajax = false;
-        c_ajax_do("GET", response_array[i][1], null, history_mode);
+        c_ajax_do("GET", response_array[i][1], null, history_mode, func);
         break;
     }
   }
@@ -244,25 +269,41 @@ function c_ajax_process_response_error(jqXHR) {
   }
 }
 
-function c_ajax_do(type, uri, data, history_mode) {
+function __find_function(func_name) {
+  if (func_name) {
+    for (let i in window) {
+      if (typeof window[i] === "function" && window[i].name === func_name) {
+        return window[i];
+      }
+    }
+  }
+  return undefined;
+}
+
+function c_ajax_do(type, uri, data, history_mode, func) {
   if (in_ajax) {
     return false;
   }
   in_ajax = true;
 
-  console.log(type);
-
   show_loading_info();
 
+  console.debug(type);
   $.ajax({
-    type: type,
+    type: type || "post",
     url: uri,
     cache: false,
     data: data,
   })
     .done(function (data, textStatus, jqXHR) {
+      console.debug(data);
       if (jqXHR.responseJSON) {
-        c_ajax_process_response_array(uri, jqXHR.responseJSON, history_mode);
+        c_ajax_process_response_array(
+          uri,
+          jqXHR.responseJSON,
+          history_mode,
+          func
+        );
       } else {
         c_ajax_set_page(uri, data, history_mode);
       }
@@ -284,16 +325,11 @@ function c_ajax_do(type, uri, data, history_mode) {
 
 function c_ajax_load(obj) {
   let dest = obj.attr("data-c-dest");
-  const func_name = obj.attr("func-c-dest");
 
   if (dest) {
     dest = $("#" + dest);
-  } else if (func_name) {
-    for (let i in window) {
-      if (typeof window[i] === "function" && window[i].name === func_name) {
-        dest = window[i];
-      }
-    }
+  } else {
+    dest = __find_function(obj, func_namobj.attr("func-c-dest"));
   }
 
   if (!dest) {
@@ -310,7 +346,11 @@ function c_ajax_load(obj) {
         jqXHR.setRequestHeader("x-celus-stamp", stamp);
       }
       // Apenas quando não foir polling exibe a ampulheta de carregando
-      if (dest && typeof dest !== "function" &&  obj.attr("data-c-load") !== "polling") {
+      if (
+        dest &&
+        typeof dest !== "function" &&
+        obj.attr("data-c-load") !== "polling"
+      ) {
         dest.prepend(
           '<span style="text-align: center; position:absolute; width: 100px; left: 50%; margin-left: -50px;"><i class="fa fa-refresh fa-spin fa-2x fa-fw"></i>'
         );
@@ -352,7 +392,7 @@ var sitesSelecteds = null;
 
 function initBase() {
   drop = $("#site-menu");
-  dropDown = drop.find('.dropdown');
+  dropDown = drop.find(".dropdown");
   dropDownMenu = $("#site-modal");
   input = dropDownMenu.find("input");
   list = dropDownMenu.find("table");

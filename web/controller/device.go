@@ -2,9 +2,12 @@ package controller
 
 import (
 	"errors"
+	"fmt"
+	"log"
 	"math"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"celus-ti.com.br/qualitec/database/model"
@@ -12,6 +15,10 @@ import (
 	"celus-ti.com.br/qualitec/web"
 	"github.com/gorilla/mux"
 )
+
+func init() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+}
 
 func DeviceList(c *Context, w http.ResponseWriter, r *http.Request) (int, error) {
 	rowsPerPage := 50
@@ -39,7 +46,7 @@ func DeviceList(c *Context, w http.ResponseWriter, r *http.Request) (int, error)
 			if result, err := model.CustomerById(c.DB, customerID); err == nil {
 				like = result.Description
 			} else {
-				return http.StatusInternalServerError, err		
+				return http.StatusInternalServerError, err
 			}
 		} else {
 			return http.StatusInternalServerError, err
@@ -66,6 +73,8 @@ func DeviceList(c *Context, w http.ResponseWriter, r *http.Request) (int, error)
 		}
 	}
 
+	c.Template.Find("device-list")
+
 	rowCount := 10
 	rowInit := 1
 	rowEnd := 3
@@ -86,7 +95,8 @@ func DeviceList(c *Context, w http.ResponseWriter, r *http.Request) (int, error)
 			return c.URL.GenURL("page", i)
 		}),
 	}
-	err = c.Template.ExecuteTemplate(w, "device-list.html", data)
+
+	err = c.Template.Execute(w, data)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -122,7 +132,7 @@ func DeviceView(c *Context, w http.ResponseWriter, r *http.Request) (int, error)
 	if sub == "history" {
 		status, erro = historyView(dr, device, c, w, r)
 	} else {
-		status, erro = graphView(dr, device, c, w)
+		status, erro = graphView(dr, device, c, w, r)
 	}
 
 	return status, erro
@@ -133,23 +143,119 @@ func graphView(
 	dr []model.DeviceViewRealTime,
 	deviceView model.DeviceView,
 	c *Context,
-	w http.ResponseWriter) (int, error) {
+	w http.ResponseWriter,
+	r *http.Request) (result int, err error) {
 
-	data := map[string]interface{}{
+	result = http.StatusOK
+	err = nil
+
+	// TODO Este é o struct que deverá ser criado pra represenar os dados do gráfico no formato json.
+	type datasetConfig struct {
+		Values      []string `json:"data"`
+		Label       string   `json:"label"`
+		BorderColor string   `json:"borderColor"`
+		Fill        bool     `json:"fill"`
+		Tension     float64  `json:"tension"`
+		PointRadius int      `json:"pointradius"`
+	}
+
+	dataset := []*datasetConfig{}
+
+	rangeBy := strings.ToLower(r.FormValue("rangeBy"))
+	dataInicial := r.FormValue("di")
+	dataFinal := r.FormValue("de")
+
+	time.Local, err = time.LoadLocation("America/Sao_Paulo")
+	if err != nil {
+		result = http.StatusInternalServerError
+		return
+	}
+
+	firstDay := util.FirstDate(time.Now())
+	lastDay := util.LastDate(time.Now())
+
+	if dataInicial == "" {
+		dataInicial = firstDay.Format("2006-01-02")
+	}
+
+	if dataFinal == "" {
+		dataFinal = lastDay.Format("2006-01-02")
+	}
+
+	if rangeBy != "" {
+		dataInicial = firstDay.Format("2006-01-02")
+		if rangeBy == "week" {
+			lastDay = lastDay.AddDate(0, 0, 7)
+		} else if rangeBy == "month" {
+			lastDay = lastDay.AddDate(0, 1, 0)
+		}
+		dataFinal = lastDay.Format("2006-01-02")
+	}
+
+	labels := []string{}
+
+	for _, channel := range dr {
+
+		setup := &datasetConfig{Values: []string{},
+			Label:       channel.ChannelDescription,
+			BorderColor: color(channel.GraphColor),
+			Fill:        false,
+			Tension:     0.1,
+			PointRadius: 0,
+		}
+
+		var hmodel []model.DeviceHistory
+		hmodel, err = model.DeviceHistoryGetByDevflag(dataInicial, dataFinal, c.DBEarth, &deviceView.Device, channel.Channel)
+		if err != nil {
+			result = http.StatusInternalServerError
+			return
+		}
+
+		for _, m := range hmodel {
+			//TODO Impedir repetição
+			evitarRepetir := make(map[string]bool)
+			l := m.Time.Format("2006-01-02 15:04:05")
+			if _, esta := evitarRepetir[l]; !esta {
+				evitarRepetir[l] = true
+				labels = append(labels, l)
+			}
+
+			evitarRepetir = make(map[string]bool)
+			l = fmt.Sprintf("%f", m.Value)
+			if _, esta := evitarRepetir[l]; !esta {
+				evitarRepetir[l] = true
+				setup.Values = append(setup.Values, l)
+			}
+		}
+
+		if len(setup.Values) > 0 {
+			dataset = append(dataset, setup)
+		}
+	}
+
+	data_device := map[string]interface{}{
+		"Labels":         labels,
+		"Dataset":        dataset,
 		"URL":            c.URL,
 		"Device":         deviceView,
 		"DeviceRealTime": dr,
+		"Qdi":            dataInicial,
+		"Qde":            dataFinal,
 	}
 
-	err := c.Template.ExecuteTemplate(w, "device-graph.html", data)
-	if err != nil {
-		return http.StatusInternalServerError, err
+	if err = c.Template.ExecuteTemplate(w, "graph", data_device); err != nil {
+		result = http.StatusInternalServerError
+		return
 	}
 
-	return http.StatusOK, nil
+	return
 }
 
-func historyView(dr []model.DeviceViewRealTime, device model.DeviceView, c *Context, w http.ResponseWriter, r *http.Request) (int, error) {
+func historyView(dr []model.DeviceViewRealTime,
+	device model.DeviceView,
+	c *Context,
+	w http.ResponseWriter,
+	r *http.Request) (int, error) {
 
 	query := r.URL.Query()
 
@@ -198,6 +304,8 @@ func historyView(dr []model.DeviceViewRealTime, device model.DeviceView, c *Cont
 		return http.StatusInternalServerError, err
 	}
 
+	c.Template.Find("pagination")
+
 	data := map[string]interface{}{
 		"Device":         device,
 		"URL":            c.URL,
@@ -214,7 +322,7 @@ func historyView(dr []model.DeviceViewRealTime, device model.DeviceView, c *Cont
 		}),
 	}
 
-	err = c.Template.ExecuteTemplate(w, "device-history.html", data)
+	err = c.Template.ExecuteTemplate(w, "history", data)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}

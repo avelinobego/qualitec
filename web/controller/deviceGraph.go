@@ -1,96 +1,81 @@
 package controller
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
 	"net/http"
-
-	"celus-ti.com.br/qualitec/database/model"
-	"github.com/gorilla/mux"
 )
 
 func DeviceGraph(c *Context, w http.ResponseWriter, r *http.Request) (int, error) {
 
-	devflag, ok := mux.Vars(r)["devflag"]
-	if !ok {
-		return http.StatusBadRequest, errors.New("incorrect param Devflag")
-	}
+	// c.Template.Find("graph")
 
-	sub, err_sub := mux.Vars(r)["sub"]
-	if !err_sub {
-		return http.StatusBadRequest, errors.New("incorrect param sub")
-	}
+	// if err := r.ParseForm(); err != nil {
+	// 	return http.StatusBadRequest, errors.New("error on Parse Form")
+	// }
+	// f := r.Form
 
-	device, err := model.DeviceGetByDevflag(c.DB, devflag)
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
+	// var data_device map[string]interface{}
 
-	dr, err := model.DeviceViewRealTimeList(c.DB,
-		model.NewViewParam(c.User.ID, c.URL.Customers),
-		devflag,
-		"",
-		"")
+	// if session, err := c.Store.Get(r, "session"); err == nil {
+	// 	data_device = session.Values["data_device"].(map[string]interface{})
+	// } else {
+	// 	return http.StatusInternalServerError, err
+	// }
 
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
+	// deviceView := data_device["Device"].(model.DeviceView)
 
-	//TODO Este é o struct que deverá ser criado pra represenar os dados do gráfico no formato json.
-	type datasetConfig struct {
-		Data        []string `json:"data"`
-		Label       string   `json:"label"`
-		BorderColor string   `json:"borderColor"`
-		Fill        bool     `json:"fill"`
-		Tension     float64  `json:"tension"`
-		PointRadius int      `json:"pointRadius"`
-	}
-	dataset := []datasetConfig{}
+	// dr, err := model.DeviceViewRealTimeList(c.DB,
+	// 	model.NewViewParam(c.User.ID, c.URL.Customers),
+	// 	deviceView.Devflag,
+	// 	"",
+	// 	"")
 
-	labels := []string{}
+	// if err != nil {
+	// 	return http.StatusInternalServerError, err
+	// }
 
-	for _, channel := range dr {
+	// type datasetConfig struct {
+	// 	Data        []string
+	// 	Label       string
+	// 	BorderColor string
+	// 	Fill        bool
+	// 	Tension     float64
+	// 	PointRadius int
+	// }
+	// dataset := []datasetConfig{}
 
-		hmodel, err := model.DeviceHistoryGetByDevflag(sub, c.DBEarth, &device.Device, channel.Channel)
-		if err != nil {
-			return http.StatusInternalServerError, err
-		}
+	// labels := []string{}
 
-		dataValues := []string{}
+	// for _, channel := range dr {
 
-		for _, m := range hmodel {
-			//TODO Impedir repetição
-			labels = append(labels, fmt.Sprintf("%v", m.Time))
-			dataValues = append(dataValues, fmt.Sprintf("%f", m.Value))
-		}
+	// 	hmodel, err := model.DeviceHistoryGetByDevflag(f, c.DBEarth, &deviceView.Device, channel.Channel)
+	// 	if err != nil {
+	// 		return http.StatusInternalServerError, err
+	// 	}
 
-		if len(dataValues) > 0 {
-			dataset = append(dataset,
-				datasetConfig{
-					Data:        dataValues,
-					Label:       channel.ChannelDescription,
-					BorderColor: color(channel.GraphColor),
-					Fill:        false,
-					Tension:     0.1,
-					PointRadius: 0,
-				})
-		}
-	}
+	// 	dataValues := []string{}
 
-	type dataType struct {
-		Labels   []string        `json:"labels"`
-		Datasets []datasetConfig `json:"datasets"`
-	}
+	// 	for _, m := range hmodel {
+	// 		//TODO Impedir repetição
+	// 		labels = append(labels, fmt.Sprintf("%v", m.Time))
+	// 		dataValues = append(dataValues, fmt.Sprintf("%f", m.Value))
+	// 	}
 
-	data := dataType{Labels: labels, Datasets: dataset}
+	// 	if len(dataValues) > 0 {
+	// 		dataset = append(dataset,
+	// 			datasetConfig{
+	// 				Data:        dataValues,
+	// 				Label:       channel.ChannelDescription,
+	// 				BorderColor: color(channel.GraphColor),
+	// 				Fill:        false,
+	// 				Tension:     0.1,
+	// 				PointRadius: 0,
+	// 			})
+	// 	}
+	// }
 
-	w.Header().Set("Content-Type", "application/json")
-	valor, err := json.Marshal(data)
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-	w.Write(valor)
+	// if err := c.Template.ExecuteTemplate(w, "device-graph", data_device); err != nil {
+	// 	return http.StatusInternalServerError, err
+	// }
 
 	return http.StatusOK, nil
 

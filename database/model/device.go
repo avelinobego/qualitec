@@ -151,7 +151,7 @@ type DeviceHistory struct {
 	Time    *time.Time
 }
 
-const SQL_BASE string = `
+const SQL_GRAPH string = `
 SELECT
    _all.id,
    qualitec.device_channel.channel, 
@@ -162,52 +162,48 @@ SELECT
 FROM qualitec.device
 JOIN qualitec.device_channel ON (qualitec.device_channel.device_id = qualitec.device.id)
 JOIN mpm6861.chl_data_all_%[1]s _all ON (_all.channel = qualitec.device_channel.channel)
-WHERE qualitec.device.devflag = ? AND qualitec.device_channel.channel = ?
-%[2]s
-LIMIT 100
+WHERE 
+qualitec.device.devflag = ? AND 
+qualitec.device_channel.channel = ? AND 
+DATE(time) BETWEEN ? AND ? LIMIT 100
 `
+const SQL_HISTORY = `SELECT
+		earth1006.chl_data_prl_%[1]s.id,
+		qualitec.device_channel.channel,
+		SUBSTRING_INDEX(SUBSTRING_INDEX(earth1006.chl_data_prl_%[1]s.value, ',', FIND_IN_SET(qualitec.device_channel.channel, earth1006.chl_data_prl_%[1]s.channel)), ',', -1) * qualitec.device_channel.conversion_factor AS value,
+		CONVERT_TZ(earth1006.chl_data_prl_%[1]s.time, 'UTC', 'America/Sao_Paulo') AS time,
+		earth1006.chl_data_prl_%[1]s.signals,
+		earth1006.chl_data_prl_%[1]s.voltage
+	FROM qualitec.device
+	JOIN qualitec.device_channel ON (qualitec.device_channel.device_id = qualitec.device.id)
+	JOIN earth1006.chl_data_prl_%[1]s
+	WHERE qualitec.device.devflag = ? AND qualitec.device_channel.channel = ?
+		AND earth1006.chl_data_prl_%[1]s.id > (SELECT CAST(MAX(earth1006.chl_data_prl_%[1]s.id) AS SIGNED) FROM earth1006.chl_data_prl_%[1]s) - 300
+	ORDER BY earth1006.chl_data_prl_%[1]s.time DESC, earth1006.chl_data_prl_%[1]s.id DESC
+	`
 
-func DeviceHistoryGetByDevflag(sub string, db database.Select, dev *Device, channel string) (h []DeviceHistory, err error) {
-	var predicate string
-	if dev.Model == ModelMpm6861 {
+func DeviceHistoryGetByDevflag(dataInicial string, dataFinal string, db database.Select, dev *Device, channel string) (h []DeviceHistory, err error) {
 
-		if sub == "week" {
-			predicate = `
-			AND YEAR(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) = YEAR(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo')) 
-			AND WEEK(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) = WEEK(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo')) 
-			`
-		} else if sub == "month" {
-			predicate = `
-			AND YEAR(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) = YEAR(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo')) 
-			AND MONTH(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) = MONTH(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo')) 
-			`
-		} else {
-			// Padrão é day
-			predicate = `
-			AND date(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) = date(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo')) 
-			AND HOUR(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) >= HOUR(CONVERT_TZ(sysdate(), 'UTC', 'America/Sao_Paulo'))
-			`
-		}
-		predicate = fmt.Sprintf(SQL_BASE, dev.Devflag, predicate)
-	} else {
-		predicate = fmt.Sprintf(
-			`SELECT 
-				earth1006.chl_data_prl_%[1]s.id,
-				qualitec.device_channel.channel, 
-				SUBSTRING_INDEX(SUBSTRING_INDEX(earth1006.chl_data_prl_%[1]s.value, ',', FIND_IN_SET(qualitec.device_channel.channel, earth1006.chl_data_prl_%[1]s.channel)), ',', -1) * qualitec.device_channel.conversion_factor AS value,
-				CONVERT_TZ(earth1006.chl_data_prl_%[1]s.time, 'UTC', 'America/Sao_Paulo') AS time, 
-				earth1006.chl_data_prl_%[1]s.signals,
-				earth1006.chl_data_prl_%[1]s.voltage
-			FROM qualitec.device
-			JOIN qualitec.device_channel ON (qualitec.device_channel.device_id = qualitec.device.id)
-			JOIN earth1006.chl_data_prl_%[1]s
-			WHERE qualitec.device.devflag = ? AND qualitec.device_channel.channel = ? 
-				AND earth1006.chl_data_prl_%[1]s.id > (SELECT CAST(MAX(earth1006.chl_data_prl_%[1]s.id) AS SIGNED) FROM earth1006.chl_data_prl_%[1]s) - 300
-			ORDER BY earth1006.chl_data_prl_%[1]s.time DESC, earth1006.chl_data_prl_%[1]s.id DESC
-			`, dev.Devflag)
+	var WORK_SQL string
+	var di time.Time
+	var de time.Time
+	di, err = time.Parse("2006-01-02", dataInicial)
+	if err != nil {
+		return
+	}
+	de, err = time.Parse("2006-01-02", dataFinal)
+	if err != nil {
+		return
 	}
 
-	err = db.Select(&h, predicate, dev.Devflag, channel)
+	WORK_SQL = fmt.Sprintf(SQL_GRAPH, dev.Devflag)
+
+	if dev.Model == ModelMpm6861 {
+		err = db.Select(&h, WORK_SQL, dev.Devflag, channel, di, de)
+	} else {
+		err = db.Select(&h, WORK_SQL, dev.Devflag, channel)
+	}
+
 	return
 }
 

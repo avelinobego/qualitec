@@ -1,32 +1,35 @@
-{{block "header" .}}
 <!DOCTYPE html>
 <html lang="pt-BR">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-        <title>Qualitec</title>
-        <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
-        <link href="/css/font-awesome.min.css" rel="stylesheet">
-        <link href="/css/celus.css" rel="stylesheet">
-        <link href="/css/tempusdominus-bootstrap-4.min.css" rel="stylesheet">
-        <script src="/js/jquery-3.3.1.min.js"></script>
-        <script src="/js/bootstrap4.1.bundle.min.js"></script>
-        <script src="/js/jquery.mark.min.js"></script>
-        <script src="/js/Chart.min.js"></script>
-        <script src="/js/celus.js"></script>
-        <script src="/js/moment-with-locales.min.js"></script>
-        <script src="/js/tempusdominus-bootstrap-4.min.js"></script>
-        <link href="https://fonts.googleapis.com/css?family=Roboto:400,400i,700,700i" rel="stylesheet">
-    </head>
-{{end}}
-    <body>
-    <div id="c-loading-info" style="margin-top: 40px; display: none;"><h4><i class="fa fa-2x fa-spinner fa-pulse"></i></h4></div>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Qualitec</title>
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+    <link href="/css/font-awesome.min.css" rel="stylesheet">
+    <link href="/css/celus.css" rel="stylesheet">
+    <link href="/css/tempusdominus-bootstrap-4.min.css" rel="stylesheet">
+    <script src="/js/jquery-3.3.1.min.js"></script>
+    <script src="/js/bootstrap4.1.bundle.min.js"></script>
+    <script src="/js/jquery.mark.min.js"></script>
+    <script src="/js/Chart.min.js"></script>
+    <script src="/js/celus.js"></script>
+    <script src="/js/moment-with-locales.min.js"></script>
+    <script src="/js/tempusdominus-bootstrap-4.min.js"></script>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,400i,700,700i" rel="stylesheet">
+</head>
+{{block "Body" .}}
+<body>
+    <div id="c-loading-info" style="margin-top: 40px; display: none;">
+        <h4><i class="fa fa-2x fa-spinner fa-pulse"></i></h4>
+    </div>
     <div class="modal" tabindex="-1" role="dialog" id="error-info">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Erro</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body"></div>
                 <div class="modal-footer">
@@ -38,30 +41,31 @@
 
     <nav class="navbar navbar-expand-lg sticky-top shadow-sm navbar-light bg-light" id="mainnavbar">
         <a class="navbar-brand c-ajax" href="/"><img src="/images/logo.png" alt="Qualitec"></a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target=".dual-nav" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target=".dual-nav"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
-        
+
         <div class="collapse navbar-collapse dual-nav" id="mainnav">
             <ul class="navbar-nav mr-auto flex-column mb-auto">
                 <li class="nav-item">
-                    <a class="nav-link c-ajax" href={{.URL.GenURLBase "/dashboard"}}>
+                    <a class="nav-link c-ajax" href={{.URL.GenURLBase "/dashboard" }}>
                         <i class="fa fa-tachometer" aria-hidden="true"></i> Dashboard
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link c-ajax" href={{.URL.GenURLBase "/devices"}}>
+                    <a class="nav-link c-ajax" href={{.URL.GenURLBase "/devices" }}>
                         <i class="fa fa-cubes" aria-hidden="true"></i> Devices
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link c-ajax" href={{.URL.GenURLBase "/stats"}}>
+                    <a class="nav-link c-ajax" href={{.URL.GenURLBase "/stats" }}>
                         <i class="fa fa-bar-chart"></i> Statistics
                     </a>
                 </li>
                 {{if eq .User.ID 1}}
                 <li class="nav-item">
-                    <a class="nav-link c-ajax" href={{.URL.GenURLBase "/admin"}}>
+                    <a class="nav-link c-ajax" href={{.URL.GenURLBase "/admin" }}>
                         <i class="fa fa-wrench"></i> Config
                     </a>
                 </li>
@@ -79,18 +83,20 @@
                         <div class="form-control d-flex" id="site-menu">
                             <span class="sites-selecteds"></span>
                             <div class="dropdown flex-grow-1" style="min-width: 80px;">
-                                <a class="dropdown-toggle" href="#" data-toggle="modal" data-target="#site-modal" style="text-align: right; display: block;"></a>
+                                <a class="dropdown-toggle" href="#" data-toggle="modal" data-target="#site-modal"
+                                    style="text-align: right; display: block;"></a>
                             </div>
                         </div>
                     </div>
                 </form>
                 <ul class="nav navbar-nav ml-auto">
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown"
+                            aria-haspopup="true" aria-expanded="false">
                             {{.User.Login}}
                         </a>
                         <div class="dropdown-menu dropdown-menu-right">
-                            <a class="dropdown-item" href={{.URL.GenURLBase "/logout"}}>Sair</a>
+                            <a class="dropdown-item" href={{.URL.GenURLBase "/logout" }}>Sair</a>
                         </div>
                     </li>
                 </ul>
@@ -104,7 +110,7 @@
                 <div class="modal-header">
                     <h5 class="modal-title">Sites</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+                        <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body">
@@ -129,14 +135,9 @@
     </div>
 
     <div class="container-fluid py-3" id="c-content-container">
-        <div id="content"></div>
+        <div id="content">{{ block "Content" .}}Sem corpo{{end}}</div>
     </div>
-    </body>
-    <script type="text/javascript">
-        $(document).ready(function() {
-            initBase();
-            adjust_loaded_page($(document));
-            c_ajax_do("get", "{{.URI}}", null, "replace")
-        });
-    </script>
+</body>
+{{end}}
+
 </html>

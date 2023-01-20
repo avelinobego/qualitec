@@ -20,6 +20,7 @@ import (
 	"github.com/Masterminds/sprig"
 	humanize "github.com/dustin/go-humanize"
 	_ "github.com/go-sql-driver/mysql"
+	"golang.org/x/exp/maps"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -28,10 +29,6 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
 )
-
-func init() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-}
 
 type configuration struct {
 	DB       string
@@ -49,30 +46,30 @@ func nocacheHandler(next http.Handler) http.Handler {
 	})
 }
 
-//go:embed web/template
+//go:embed web/template/*
 var templatesHTML embed.FS
 
 //go:embed web/html
 var staticFiles embed.FS
 
+func init() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+}
+
 func main() {
-	var err error
-	var file *os.File
 
 	// Loading configuration
 	log.Println("Carregando configurações...")
-	if file, err = os.Open("conf.json"); err != nil {
-		log.Fatal(err)
-	}
+	file := util.Check(os.Open("conf.json"))(log.Fatal)
 
 	decoder := json.NewDecoder(file)
 	cfg := configuration{}
-	if err = decoder.Decode(&cfg); err != nil {
+	if err := decoder.Decode(&cfg); err != nil {
 		log.Fatal(err)
 	}
 
 	log.Println("Carregando templates...")
-	t := template.New("celus").Funcs(sprig.FuncMap()).Funcs(template.FuncMap{
+	funcs := template.FuncMap{
 		"Round":            util.RoundPlus,
 		"CommafWithDigits": humanize.CommafWithDigits,
 		"RangeStruct":      util.RangeStructer,
@@ -107,42 +104,45 @@ func main() {
 		"Minus": func(a, b int) int {
 			return a - b
 		},
-	})
-
-	if templatesNames, err := fs.Glob(templatesHTML, "web/template/*.html"); err == nil {
-		t.ParseFS(templatesHTML, templatesNames...)
-	} else {
-		log.Fatal(err)
 	}
 
+	maps.Copy(funcs, sprig.FuncMap())
+
+	w := util.MakeWrapper()
+	f := util.MakeFiles(templatesHTML)
+	w.Add(util.Templates("pagination", funcs, f("pagination.html")))
+	w.Add(util.Templates("login", funcs, f("base.html"), f("login.html")))
+	w.Add(util.Templates("device-list", funcs, f("base.html"), f("device-list.html"), f("components.html")))
+	w.Add(util.Templates("dashboard", funcs, f("base.html"), f("dashboard.html")))
+	w.Add(util.Templates("history", funcs, f("base.html"), f("device-history.html"), f("device-component.html")))
+	w.Add(util.Templates("graph", funcs, f("base.html"), f("device-graph.html"), f("device-component.html")))
+	w.Add(util.Templates("not_found", funcs, f("base.html"), f("404.html")))
+
 	log.Printf("Conectando banco de dados %s\n", cfg.DB)
-	db, _ := sqlx.Open("mysql", cfg.User+":"+cfg.Passwd+"@"+cfg.DB+"?parseTime=true&loc=UTC")
-	db2, _ := sqlx.Open("mysql", cfg.User+":"+cfg.Passwd+"@"+cfg.DBEarth+"?parseTime=true&loc=UTC")
+	db := util.Check(sqlx.Open("mysql", cfg.User+":"+cfg.Passwd+"@"+cfg.DB+"?parseTime=true&loc=UTC"))(log.Fatal)
+	db2 := util.Check(sqlx.Open("mysql", cfg.User+":"+cfg.Passwd+"@"+cfg.DBEarth+"?parseTime=true&loc=UTC"))(log.Fatal)
+
 	// Por razões de segurança apenas
 	cfg.Passwd = ""
 
 	ctx := &controller.Context{
 		DB:       db,
 		DBEarth:  db2,
-		Template: t,
+		Template: w,
 		Store: sessions.NewCookieStore(
 			securecookie.GenerateRandomKey(16),
 			securecookie.GenerateRandomKey(16)),
-		//Services: services,
 	}
 	ctx.Store.Options.MaxAge = 0
 
 	routes := mux.NewRouter()
-	ajax := routes.Headers("X-Requested-With", "XMLHttpRequest").Subrouter()
-	ajax.Handle("/", controller.HandlerSession(ctx, controller.DeviceList))
-	ajax.Handle("/dashboard", controller.HandlerSession(ctx, controller.DeviceList))
-	ajax.Handle("/devices", controller.HandlerSession(ctx, controller.DeviceList))
-	ajax.Handle("/device/{devflag}/{sub:(?:graph|history)}", controller.HandlerSession(ctx, controller.DeviceView))
-	ajax.Handle("/device/graph/{devflag}/{sub:(?:day|week|month)}", controller.HandlerSession(ctx, controller.DeviceGraph))
-
-	ajax.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		controller.NotFound(ctx, w, r)
-	})
+	routes.Handle("/", controller.HandlerSession(ctx, controller.DeviceList))
+	routes.Handle("/dashboard", controller.HandlerSession(ctx, controller.DeviceList))
+	routes.Handle("/devices", controller.HandlerSession(ctx, controller.DeviceList))
+	routes.Handle("/device/{sub:(?:graph|history)}/{devflag}", controller.HandlerSession(ctx, controller.DeviceView))
+	routes.Path("/device/graph/{devflag}").
+		Queries("rangeBy", "(^$|day|week|month)").
+		Handler(controller.HandlerSession(ctx, controller.DeviceView))
 
 	if sub, err := fs.Sub(staticFiles, "web/html"); err == nil {
 		fileServer := http.FileServer(http.FS(sub))
@@ -166,8 +166,6 @@ func main() {
 		controller.SignIn(ctx, w, r)
 	}).Methods("POST")
 
-	routes.PathPrefix("/").Handler(controller.HandlerSession(ctx, controller.Base))
-
 	webServer := handlers.CompressHandlerLevel(routes, gzip.DefaultCompression)
 
 	log.Println("Iniciado HTTP e HTTPS...")
@@ -182,7 +180,7 @@ func main() {
 		})))
 
 		if err != nil {
-			log.Println(err)
+			log.Fatal()
 		}
 	}()
 

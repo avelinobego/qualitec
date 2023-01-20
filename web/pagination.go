@@ -14,7 +14,7 @@ type pagination struct {
 	Page   int
 }
 
-func Pagination(t *template.Template, linesPerPage, totalLines, currentPage int, f func(int) string) (html template.HTML) {
+func Pagination(tpl *util.TempleWrapper, linesPerPage, totalLines, currentPage int, f func(int) string) (html template.HTML) {
 	totalButtons := 5
 	sideButtons := int(math.Floor(float64(totalButtons) / float64(2)))
 
@@ -38,7 +38,7 @@ func Pagination(t *template.Template, linesPerPage, totalLines, currentPage int,
 		"URLs":     paginationData,
 	}
 	writer := new(bytes.Buffer)
-	err := t.ExecuteTemplate(writer, "pagination.html", data)
+	err := tpl.Execute(writer, data)
 	if err != nil {
 		return template.HTML(template.HTMLEscaper(err.Error()))
 	}

@@ -1,3 +1,4 @@
+{{define "Content"}}
 <div id="c-title">Devices</div>
 <div class="card mb-2 shadow-sm">
     <div class="card-header">
@@ -11,17 +12,21 @@
             <div class="col-md-auto">
                 <div class="btn-toolbar" role="toolbar">
                     <div class="btn-group mr-2 mb-2" role="group">
-                        <a href={{.URL.GenURL "connectivity" "online"}} class="btn btn-success c-ajax">Online <span class="badge badge-light">{{.OnlineCount}}</span></a>
-                        <a href={{.URL.GenURL "connectivity" "offline"}} class="btn btn-outline-secondary c-ajax">Offline <span class="badge badge-light">{{.OfflineCount}}</span></a>
+                        <a href={{.URL.GenURL "connectivity" "online" }} class="btn btn-success c-ajax">Online <span
+                                class="badge badge-light">{{.OnlineCount}}</span></a>
+                        <a href={{.URL.GenURL "connectivity" "offline" }}
+                            class="btn btn-outline-secondary c-ajax">Offline <span
+                                class="badge badge-light">{{.OfflineCount}}</span></a>
                     </div>
                     <div class="btn-group mb-2" role="group">
                         <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <button type="button" class="btn btn-outline-secondary dropdown-toggle"
+                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                 Ordem
                             </button>
                             <div class="dropdown-menu">
-                                <a class="c-ajax dropdown-item" href={{.URL.GenURL "order" "customer"}}>Customer</a>
-                                <a class="c-ajax dropdown-item" href={{.URL.GenURL "order" "device"}}>Device</a>
+                                <a class="c-ajax dropdown-item" href={{.URL.GenURL "order" "customer" }}>Customer</a>
+                                <a class="c-ajax dropdown-item" href={{.URL.GenURL "order" "device" }}>Device</a>
                             </div>
                         </div>
                     </div>
@@ -31,7 +36,7 @@
         <div>
             <span>
                 {{if ne .Order ""}}
-                    {{template "filter_badge" Dict "Text" .Order "URL" (.URL.GenURL "order" "")}}
+                {{template "filter_badge" Dict "Text" .Order "URL" (.URL.GenURL "order" "")}}
                 {{end}}
             </span>
             <span class="float-right">
@@ -41,73 +46,78 @@
         <div id="no-more-tables">
             <table class="computers table table-hover mt-2">
                 <thead>
-                <tr>
-                    <th class="device">Item</th>
-                    <th class="unit">Value</th>
-                    <th class="value">Status</th>
-                    <th class="channel">Time/Channel</th>
-                    <th class="channel">Status</th>
-                </tr>
+                    <tr>
+                        <th class="device">Item</th>
+                        <th class="unit">Value</th>
+                        <th class="value">Status</th>
+                        <th class="channel">Time/Channel</th>
+                        <th class="channel">Status</th>
+                    </tr>
                 </thead>
                 <tbody>
-                {{$URL := .URL}}
-                
-                {{$devflag := NewVar ""}}
-                {{$first := NewVar 1}}
-                {{$prev := NewVar ""}}
+                    {{$URL := .URL}}
 
-                {{range .Devices}}
+                    {{$devflag := NewVar ""}}
+                    {{$first := NewVar 1}}
+                    {{$prev := NewVar ""}}
+
+                    {{range .Devices}}
                     {{if ne .Devflag (GetVar $devflag)}}
 
-                        {{if ne (GetVar $first) 1}}
-                            {{block "bottom_device" (GetVar $prev)}}
-                            <tr>
-                                <td class="px-4 py-1 text-black-50">Signal</td>
-                                <td class="py-1 text-black-50">{{.Signals}}</td>
-                                <td class="py-1" colspan="3"></td>
-                            </tr>
-                            <tr>
-                                <td class="px-4 py-1 text-black-50">Voltage</td>
-                                <td class="py-1 text-black-50">{{.Voltage}}</td>
-                                <td class="py-1" colspan="3"></td>
-                            </tr>                
-                            {{end}}
-
-                        {{end}}
-
-                        <tr >
-                            <td colspan="3">
-                                <a href={{$URL.GenURLBase (printf "/device/%s/graph" .Devflag)}} class="c-ajax">
-                                    {{.Customer}}{{if ne .Tag ""}}, {{.Tag}}{{end}}, {{.Devflag}}
-                                </a>
-                            </td>
-                            <td>{{FormatTime .Time}}</td>
-                            <td>{{if .IsOnline}}
-                                <a class="c-ajax badge badge-success" href={{$URL.GenURL "connectivity" "online"}}>Online</a>
-                                {{else}}
-                                <a class="c-ajax badge badge-secondary" href={{$URL.GenURL "connectivity" "offline"}}>Offline</a>
-                                {{end}}
-                            </td>
-                        </tr> 
-                        {{SetVar $devflag .Devflag}}
+                    {{if ne (GetVar $first) 1}}
+                    {{block "bottom_device" (GetVar $prev)}}
+                    <tr>
+                        <td class="px-4 py-1 text-black-50">Signal</td>
+                        <td class="py-1 text-black-50">{{.Signals}}</td>
+                        <td class="py-1" colspan="3"></td>
+                    </tr>
+                    <tr>
+                        <td class="px-4 py-1 text-black-50">Voltage</td>
+                        <td class="py-1 text-black-50">{{.Voltage}}</td>
+                        <td class="py-1" colspan="3"></td>
+                    </tr>
                     {{end}}
-                    
+
+                    {{end}}
+
+                    <tr>
+                        <td colspan="3">
+                            <a href={{$URL.GenURLBase (printf "/device/graph/%s" .Devflag)}} class="c-ajax">
+                                {{.Customer}}{{if ne .Tag ""}}, {{.Tag}}{{end}}, {{.Devflag}}
+                            </a>
+                        </td>
+                        <td>{{FormatTime .Time}}</td>
+                        <td>{{if .IsOnline}}
+                            <a class="c-ajax badge badge-success" href={{$URL.GenURL "connectivity" "online"
+                                }}>Online</a>
+                            {{else}}
+                            <a class="c-ajax badge badge-secondary" href={{$URL.GenURL "connectivity" "offline"
+                                }}>Offline</a>
+                            {{end}}
+                        </td>
+                    </tr>
+                    {{SetVar $devflag .Devflag}}
+                    {{end}}
+
                     {{if eq .Devflag (GetVar $devflag)}}
-                        <tr>
-                            <td class="px-4 py-1 text-black-50">{{.ChannelDescription}}</td>
-                            <td class="py-1 text-black-50">{{FormatFloat .Value (Uint8ToInt .DecimalView)}} {{.ChannelUnit}}</td>
-                            <td class="py-1"><span class="badge badge-info">Normal</span></td>
-                            <td class="py-1"  colspan="2"><span class="text-black-50 badge badge-light badge-pill">{{.Channel}}</span></td>
-                        </tr>
+                    <tr>
+                        <td class="px-4 py-1 text-black-50">{{.ChannelDescription}}</td>
+                        <td class="py-1 text-black-50">{{FormatFloat .Value (Uint8ToInt .DecimalView)}} {{.ChannelUnit}}
+                        </td>
+                        <td class="py-1"><span class="badge badge-info">Normal</span></td>
+                        <td class="py-1" colspan="2"><span
+                                class="text-black-50 badge badge-light badge-pill">{{.Channel}}</span></td>
+                    </tr>
                     {{end}}
                     {{SetVar $first 0}}
                     {{SetVar $prev .}}
-                {{end}}
-                {{if ne (len .Devices) 0 }}
+                    {{end}}
+                    {{if ne (len .Devices) 0 }}
                     {{template "bottom_device" (GetVar $prev)}}
-                {{end}}
+                    {{end}}
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+{{end}}

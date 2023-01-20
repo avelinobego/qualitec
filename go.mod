@@ -25,5 +25,6 @@ require (
 	github.com/mitchellh/copystructure v1.0.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.0 // indirect
 	github.com/stretchr/testify v1.4.0 // indirect
+	golang.org/x/exp v0.0.0-20230111222715-75897c7a292a
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
