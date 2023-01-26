@@ -158,6 +158,7 @@ func main() {
 	routes.Path("/device/graph/{devflag}").
 		Queries("rangeBy", "(^$|day|week|month)").
 		Handler(controller.HandlerSession(ctx, controller.DeviceView))
+	routes.Handle("/device/history/{devflag}", controller.HandlerSession(ctx, controller.DeviceView))
 
 	if sub, err := fs.Sub(staticFiles, "web/html"); err == nil {
 		fileServer := http.FileServer(http.FS(sub))
