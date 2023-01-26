@@ -153,7 +153,7 @@ type DeviceHistory struct {
 	Time    *time.Time
 }
 
-const SQL_GRAPH string = `
+const SQL_MPM6861_GRAPH string = `
 SELECT
    _all.id,
    qualitec.device_channel.channel, 
@@ -167,9 +167,28 @@ JOIN mpm6861.chl_data_all_%[1]s _all ON (_all.channel = qualitec.device_channel.
 WHERE 
 qualitec.device.devflag = ? AND 
 qualitec.device_channel.channel = ? AND 
-DATE(time) BETWEEN ? AND ? LIMIT 100
+DATE(_all.time) BETWEEN ? AND ? 
+ORDER BY _all.time 
+LIMIT 100
 `
-const SQL_HISTORY = `SELECT
+
+const SLQ_GRAPH_EARTH = `
+SELECT 
+	earth.id,
+	qc.channel, 
+	SUBSTRING_INDEX(SUBSTRING_INDEX(earth.value, ',', FIND_IN_SET(qc.channel, earth.channel)), ',', -1) * qc.conversion_factor AS value,
+	CONVERT_TZ(earth.time, 'UTC', 'America/Sao_Paulo') AS time, 
+	earth.signals,
+	earth.voltage
+FROM qualitec.device quali
+	JOIN qualitec.device_channel qc ON (qc.device_id = quali.id)
+	JOIN earth1006.chl_data_prl_%[1]s earth ON earth.channel = qc.channel 
+WHERE quali.devflag = ? AND qc.channel = ? 
+	AND CONVERT_TZ(earth.time, 'UTC', 'America/Sao_Paulo') BETWEEN ? AND ?
+	ORDER BY earth.time DESC, earth.id DESC
+	LIMIT 100`
+
+const SQL_HISTORY_MODELMPM6861 = `SELECT
 		earth1006.chl_data_prl_%[1]s.id,
 		qualitec.device_channel.channel,
 		SUBSTRING_INDEX(SUBSTRING_INDEX(earth1006.chl_data_prl_%[1]s.value, ',', FIND_IN_SET(qualitec.device_channel.channel, earth1006.chl_data_prl_%[1]s.channel)), ',', -1) * qualitec.device_channel.conversion_factor AS value,
@@ -198,13 +217,13 @@ func DeviceHistoryGetByDevflag(dataInicial string, dataFinal string, db database
 		return
 	}
 
-	WORK_SQL = fmt.Sprintf(SQL_GRAPH, dev.Devflag)
-
 	if dev.Model == ModelMpm6861 {
-		err = db.Select(&h, WORK_SQL, dev.Devflag, channel, di, de)
+		WORK_SQL = fmt.Sprintf(SQL_MPM6861_GRAPH, dev.Devflag)
 	} else {
-		err = db.Select(&h, WORK_SQL, dev.Devflag, channel)
+		WORK_SQL = fmt.Sprintf(SLQ_GRAPH_EARTH, dev.Devflag)
 	}
+
+	err = db.Select(&h, WORK_SQL, dev.Devflag, channel, di, de)
 
 	return
 }
