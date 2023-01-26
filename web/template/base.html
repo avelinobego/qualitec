@@ -40,7 +40,7 @@
     </div>
 
     <nav class="navbar navbar-expand-lg sticky-top shadow-sm navbar-light bg-light" id="mainnavbar">
-        <a class="navbar-brand c-ajax" href="/"><img src="/images/logo.png" alt="Qualitec"></a>
+        <a class="navbar-brand" href="/"><img src="/images/logo.png" alt="Qualitec"></a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target=".dual-nav"
             aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -49,23 +49,23 @@
         <div class="collapse navbar-collapse dual-nav" id="mainnav">
             <ul class="navbar-nav mr-auto flex-column mb-auto">
                 <li class="nav-item">
-                    <a class="nav-link c-ajax" href={{.URL.GenURLBase "/dashboard" }}>
+                    <a class="nav-link" href={{.URL.GenURLBase "/dashboard" }}>
                         <i class="fa fa-tachometer" aria-hidden="true"></i> Dashboard
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link c-ajax" href={{.URL.GenURLBase "/devices" }}>
+                    <a class="nav-link" href={{.URL.GenURLBase "/devices" }}>
                         <i class="fa fa-cubes" aria-hidden="true"></i> Devices
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link c-ajax" href={{.URL.GenURLBase "/stats" }}>
+                    <a class="nav-link" href={{.URL.GenURLBase "/stats" }}>
                         <i class="fa fa-bar-chart"></i> Statistics
                     </a>
                 </li>
                 {{if eq .User.ID 1}}
                 <li class="nav-item">
-                    <a class="nav-link c-ajax" href={{.URL.GenURLBase "/admin" }}>
+                    <a class="nav-link" href={{.URL.GenURLBase "/admin" }}>
                         <i class="fa fa-wrench"></i> Config
                     </a>
                 </li>
@@ -123,8 +123,8 @@
                         <table class="table table-hover">
                             {{$url := .URL}}
                             {{range .Customers}}
-                            <tr data-id="{{.ID}}">
-                                <td>{{.Description}}</td>
+                            <tr>
+                                <td><a href="?s={{.ID}}">{{.Description}}</a></td>
                             </tr>
                             {{end}}
                         </table>
