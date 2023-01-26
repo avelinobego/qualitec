@@ -20,7 +20,10 @@ func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 }
 
-func DeviceList(c *Context, w http.ResponseWriter, r *http.Request) (int, error) {
+func DeviceList(c *Context, w http.ResponseWriter, r *http.Request) (result int, err error) {
+
+	result, err = http.StatusInternalServerError, nil
+
 	rowsPerPage := 50
 
 	query := r.URL.Query()
@@ -42,20 +45,17 @@ func DeviceList(c *Context, w http.ResponseWriter, r *http.Request) (int, error)
 	like := ""
 
 	if customer_id := query.Get("s"); customer_id != "" {
-		if customerID, err := model.CustomerParseID(customer_id); err == nil {
-			if result, err := model.CustomerById(c.DB, customerID); err == nil {
-				like = result.Description
-			} else {
-				return http.StatusInternalServerError, err
-			}
+		var customerID model.CustomerID
+		if customerID, err = model.CustomerParseID(customer_id); err == nil {
+			vp.Customers = []model.CustomerID{customerID}
 		} else {
-			return http.StatusInternalServerError, err
+			return
 		}
 	}
 
 	devices, err := model.DeviceViewRealTimeList(c.DB, vp, search, like, order)
 	if err != nil {
-		return http.StatusInternalServerError, err
+		return
 	}
 
 	// Contando devices online e offline
@@ -75,6 +75,11 @@ func DeviceList(c *Context, w http.ResponseWriter, r *http.Request) (int, error)
 
 	c.Template.Find("device-list")
 
+	var customers []model.Customer
+	if customers, err = model.CustomerViewListActive(c.DB, c.User.ID); err != nil {
+		return
+	}
+
 	rowCount := 10
 	rowInit := 1
 	rowEnd := 3
@@ -82,6 +87,7 @@ func DeviceList(c *Context, w http.ResponseWriter, r *http.Request) (int, error)
 	data := map[string]interface{}{
 		"User":         c.User,
 		"URL":          c.URL,
+		"Customers":    customers,
 		"Devices":      devices,
 		"RowCount":     rowCount,
 		"RowInit":      rowInit,
@@ -98,10 +104,13 @@ func DeviceList(c *Context, w http.ResponseWriter, r *http.Request) (int, error)
 
 	err = c.Template.Execute(w, data)
 	if err != nil {
-		return http.StatusInternalServerError, err
+		return
 	}
 
-	return http.StatusOK, nil
+	result = http.StatusOK
+	err = nil
+
+	return
 }
 
 // DeviceView renderiza a página de visualização do device
@@ -255,7 +264,10 @@ func historyView(dr []model.DeviceViewRealTime,
 	device model.DeviceView,
 	c *Context,
 	w http.ResponseWriter,
-	r *http.Request) (int, error) {
+	r *http.Request) (result int, err error) {
+
+	result = http.StatusInternalServerError
+	err = nil
 
 	query := r.URL.Query()
 
@@ -266,16 +278,21 @@ func historyView(dr []model.DeviceViewRealTime,
 	qdi := query.Get("di")
 	qde := query.Get("de")
 	if qdi != "" && qde != "" {
-		validation := web.NewFormValidation(r)
-		di = validation.RequiredDateTimeLayout("di", 0, "02/01/2006")
-		de = validation.RequiredDateTimeLayout("de", 0, "02/01/2006")
-		// Como o parâmetro de só aceita data sem as horas e minutos, adiciona 23h, 59m, 59s (86339 segundos)
-		// na data final (de) para que ele pegue o final do dia.
-		dtmp := de.Add(time.Second * 86399)
-		de = &dtmp
-		if validation.Dispatch(w) {
-			return http.StatusOK, nil
+		var temp1 time.Time
+		var temp2 time.Time
+		temp1, err = time.Parse("2006-01-02", qdi)
+		if err != nil {
+			return
 		}
+
+		temp2, err = time.Parse("2006-01-02", qde)
+		if err != nil {
+			return
+		}
+
+		di = util.Ptr(util.FirstDate(temp1))
+		de = util.Ptr(util.LastDate(temp2))
+
 	}
 
 	channels := make(map[string]*model.DeviceViewRealTime)
@@ -285,7 +302,7 @@ func historyView(dr []model.DeviceViewRealTime,
 
 	HistoryCount, err := model.DeviceHistory2Count(c.DB, &device.Device, di, de)
 	if err != nil {
-		return http.StatusInternalServerError, err
+		return
 	}
 
 	page, err := strconv.Atoi(query.Get("page"))
@@ -301,7 +318,7 @@ func historyView(dr []model.DeviceViewRealTime,
 
 	dh, err := model.DeviceHistory2GetByDevflag(c.DBEarth, &device.Device, dr, linesPerPage*(page-1), linesPerPage, di, de)
 	if err != nil {
-		return http.StatusInternalServerError, err
+		return
 	}
 
 	c.Template.Find("pagination")
@@ -324,8 +341,11 @@ func historyView(dr []model.DeviceViewRealTime,
 
 	err = c.Template.ExecuteTemplate(w, "history", data)
 	if err != nil {
-		return http.StatusInternalServerError, err
+		return
 	}
 
-	return http.StatusOK, nil
+	result = http.StatusOK
+	err = nil
+
+	return
 }
