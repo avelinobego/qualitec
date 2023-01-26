@@ -1,9 +1,9 @@
 package model
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"celus-ti.com.br/qualitec/database"
@@ -71,6 +71,7 @@ func DeviceGetByDevflag(db database.Get, devflag string) (d DeviceView, err erro
 type DeviceViewRealTime struct {
 	Device
 	Customer           string
+	CustomerID         int64 `db:"customer_id"`
 	DecimalView        uint8 `db:"decimal_view"`
 	Value              float64
 	ChannelUnit        string
@@ -117,6 +118,7 @@ func DeviceViewRealTimeList(db database.Select, vp *ViewParam, devflag, like, or
 	err = db.Select(&dv,
 		`SELECT
 			device_view_realtime.id,
+			device_view_realtime.customer_id,
 			devflag,
 			model,
 			IFNULL(tag, "") AS tag,
@@ -248,38 +250,64 @@ func DeviceHistory2Count(db database.Get, dev *Device, di, de *time.Time) (count
 	return
 }
 
-func DeviceHistory2GetByDevflag(db database.Select, dev *Device, dr []DeviceViewRealTime, limitFirst, limitTotal int, di, de *time.Time) (dh []DeviceHistory2, err error) {
+func DeviceHistory2GetByDevflag(db database.Select,
+	dev *Device,
+	dr []DeviceViewRealTime,
+	limitFirst,
+	limitTotal int,
+	di,
+	de *time.Time) (dh []DeviceHistory2, err error) {
 
 	if dev.Model == ModelMpm6861 {
-		sql := "SELECT CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo') AS time,"
+		sql := bytes.NewBufferString("SELECT CONVERT_TZ(d.time, 'UTC', 'America/Sao_Paulo') AS `time`,")
 
 		// Montagem da cláusula WHEN do SQL que faz o pivot das linhas em colunas
-		when := "CONCAT("
-		channels := "'"
-		for _, channel := range dr {
-			channels += channel.Channel + ","
-			when += "MAX(CASE WHEN CHANNEL = " + channel.Channel + " THEN value ELSE 0 END), ',', "
+		var first_channel string
+		last := len(dr) - 1
+		values := bytes.NewBufferString("CONCAT(d.value")
+		channels := bytes.NewBufferString("'")
+		for index, channel := range dr {
+			channels.WriteString(channel.Channel)
+			if index < last {
+				channels.WriteString(",")
+			}
+			// Pegar o primeiro canal
+			if index == 0 {
+				first_channel = channel.Channel
+				continue
+			}
+			if index <= last {
+				values.WriteString(",',',")
+			}
+			values.WriteString(fmt.Sprintf("lj%d.value", index))
+		}
+		values.WriteString(") as `value`, ")
+		channels.WriteString("' as `channel`, ")
+
+		sql.WriteString(channels.String())
+		sql.WriteString(values.String())
+		sql.WriteString("CAST(d.`signal` AS CHAR) AS `signals`, ")
+		sql.WriteString("CONCAT(CAST(d.voltage AS DECIMAL(10,2)),'v') AS `voltage` ")
+		sql.WriteString(fmt.Sprintf("FROM mpm6861.chl_data_all_%[1]s d ", dev.Devflag))
+		for index, channel := range dr {
+			// Não levo em consideração o primeiro canal
+			if index == 0 {
+				continue
+			}
+			sql.WriteString(fmt.Sprintf("LEFT JOIN  mpm6861.chl_data_all_%[1]s lj%[2]d ON lj%[2]d.channel=%[3]s AND lj%[2]d.`time` = d.`time`", dev.Devflag, index, channel.Channel))
 		}
 
-		sql += strings.TrimSuffix(channels, ",") + "'" + " AS channel," +
-			strings.TrimSuffix(when, ", ',', ") + ")" + " AS value," +
-			"CAST(`signal` AS CHAR) AS `signals`," +
-			"CONCAT(CAST(voltage AS DECIMAL(10,2)),'v') AS voltage" +
-			" FROM mpm6861.chl_data_all_%[1]s "
-
 		if di != nil && de != nil {
-			sql += `WHERE time >= CONVERT_TZ(?, 'America/Sao_Paulo', 'UTC') AND time <= CONVERT_TZ(?, 'America/Sao_Paulo', 'UTC')
-				GROUP BY time, channel, value, signals, voltage
-				ORDER by time DESC
-				LIMIT %d, %d`
-			sql = fmt.Sprintf(sql, dev.Devflag, limitFirst, limitTotal)
-			err = db.Select(&dh, sql, di, de)
+			sql.WriteString("WHERE d.time >= CONVERT_TZ(?, 'America/Sao_Paulo', 'UTC') AND d.time <= CONVERT_TZ(?, 'America/Sao_Paulo', 'UTC') ")
+			sql.WriteString("AND d.channel = '%[3]s' ")
+			sql.WriteString("ORDER by d.time DESC LIMIT %[1]d, %[2]d")
+			sql_final := fmt.Sprintf(sql.String(), limitFirst, limitTotal, first_channel)
+			err = db.Select(&dh, sql_final, di, de)
 		} else {
-			sql += `GROUP BY time, channel, value, signals, voltage
-				ORDER by time DESC
-				LIMIT %d, %d`
-			sql = fmt.Sprintf(sql, dev.Devflag, limitFirst, limitTotal)
-			err = db.Select(&dh, sql)
+			sql.WriteString("WHERE d.channel = '%[3]s' ")
+			sql.WriteString("ORDER by d.time DESC LIMIT %[1]d, %[2]d")
+			sql_final := fmt.Sprintf(sql.String(), limitFirst, limitTotal, first_channel)
+			err = db.Select(&dh, sql_final)
 		}
 
 	} else {
@@ -288,7 +316,7 @@ func DeviceHistory2GetByDevflag(db database.Select, dev *Device, dr []DeviceView
 				`SELECT 
 				channel,
 				value,
-				CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo') AS time,
+				CONVERT_TZ(time, 'UTC', ')America/Sao_Paulo') AS time,
 				signals,
 				voltage
 			FROM chl_data_prl_%[1]s
