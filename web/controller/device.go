@@ -277,23 +277,33 @@ func historyView(dr []model.DeviceViewRealTime,
 	var de *time.Time
 	qdi := query.Get("di")
 	qde := query.Get("de")
-	if qdi != "" && qde != "" {
-		var temp1 time.Time
-		var temp2 time.Time
+
+	var temp1 time.Time
+	var temp2 time.Time
+
+	if qdi != "" {
 		temp1, err = time.Parse("2006-01-02", qdi)
 		if err != nil {
 			return
 		}
+	} else {
+		temp1 = util.FirstDate(time.Now())
+	}
 
+	if qde != "" {
 		temp2, err = time.Parse("2006-01-02", qde)
 		if err != nil {
 			return
 		}
-
-		di = util.Ptr(util.FirstDate(temp1))
-		de = util.Ptr(util.LastDate(temp2))
-
+	} else {
+		temp2 = util.LastDate(time.Now())
 	}
+
+	di = util.Ptr(util.FirstDate(temp1))
+	de = util.Ptr(util.LastDate(temp2))
+
+	qdi = temp1.Format("2006-01-02")
+	qde = temp2.Format("2006-01-02")
 
 	channels := make(map[string]*model.DeviceViewRealTime)
 	for _, d := range dr {
