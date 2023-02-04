@@ -335,13 +335,13 @@ func DeviceHistory2GetByDevflag(db database.Select,
 				`SELECT 
 				channel,
 				value,
-				CONVERT_TZ(time, 'UTC', ')America/Sao_Paulo') AS time,
+				CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo') AS time,
 				signals,
 				voltage
-			FROM chl_data_prl_%[1]s
+			FROM %[1]s.chl_data_prl_%[2]s
 			WHERE time >= CONVERT_TZ(?, 'America/Sao_Paulo', 'UTC') AND time <= CONVERT_TZ(?, 'America/Sao_Paulo', 'UTC')
 			ORDER by time DESC, id DESC
-			LIMIT %d, %d`, dev.Devflag, limitFirst, limitTotal)
+			LIMIT %d, %d`, dev.Model, dev.Devflag, limitFirst, limitTotal)
 			err = db.Select(&dh, sql, di, de)
 		} else {
 			sql := fmt.Sprintf(
@@ -351,9 +351,9 @@ func DeviceHistory2GetByDevflag(db database.Select,
 				CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo') AS time,
 				signals,
 				voltage
-			FROM chl_data_prl_%[1]s
+			FROM %[1]s.chl_data_prl_%[2]s
 			ORDER by time DESC, id DESC
-			LIMIT %d, %d`, dev.Devflag, limitFirst, limitTotal)
+			LIMIT %d, %d`, dev.Model, dev.Devflag, limitFirst, limitTotal)
 			err = db.Select(&dh, sql)
 		}
 	}
