@@ -27,9 +27,15 @@ func FormatPhone(phone string) string {
 }
 
 func FormatTime(time *time.Time) string {
+	if time == nil {
+		return "?"
+	}
 	return time.Format("02/01/2006 15:04")
 }
 
 func FormatDate(time *time.Time) string {
+	if time == nil {
+		return "?"
+	}
 	return time.Format("02/01/2006")
 }
