@@ -159,16 +159,17 @@ func graphView(
 	err = nil
 
 	// TODO Este é o struct que deverá ser criado pra represenar os dados do gráfico no formato json.
-	type datasetConfig struct {
-		Values      []string `json:"data"`
+	type dataset_struct struct {
 		Label       string   `json:"label"`
+		Data        []string `json:"data"`
 		BorderColor string   `json:"borderColor"`
 		Fill        bool     `json:"fill"`
 		Tension     float64  `json:"tension"`
 		PointRadius int      `json:"pointradius"`
+		YAxisID     string   `json:"yAxisID"`
 	}
 
-	dataset := []*datasetConfig{}
+	slice_datasets := []*dataset_struct{}
 
 	rangeBy := strings.ToLower(r.FormValue("rangeBy"))
 	dataInicial := r.FormValue("di")
@@ -203,15 +204,23 @@ func graphView(
 
 	labels := []string{}
 
-	for _, channel := range dr {
+	for index, channel := range dr {
 
-		setup := &datasetConfig{Values: []string{},
+		concrete_dataset := &dataset_struct{Data: []string{},
 			Label:       channel.ChannelDescription,
 			BorderColor: color(channel.GraphColor),
 			Fill:        false,
 			Tension:     0.1,
 			PointRadius: 0,
 		}
+
+		concrete_dataset.YAxisID = fmt.Sprintf("y%d", index)
+
+		// if index == 0 {
+		// 	concrete_dataset.YAxisID = "y"
+		// } else {
+		// 	concrete_dataset.YAxisID = fmt.Sprintf("y%d", index)
+		// }
 
 		var hmodel []model.DeviceHistory
 		hmodel, err = model.DeviceHistoryGetByDevflag(dataInicial, dataFinal, c.DBEarth, &deviceView.Device, channel.Channel)
@@ -220,31 +229,33 @@ func graphView(
 			return
 		}
 
-		for _, m := range hmodel {
+		evitarRepetir := make(map[string]bool)
+		evitarRepetirValor := make(map[string]bool)
+		for _, model := range hmodel {
 			//TODO Impedir repetição
-			evitarRepetir := make(map[string]bool)
-			l := m.Time.Format("2006-01-02 15:04:05")
-			if _, esta := evitarRepetir[l]; !esta {
-				evitarRepetir[l] = true
-				labels = append(labels, l)
+			one_label := model.Time.Format("2006-01-02 15:04:05")
+			if _, esta := evitarRepetir[one_label]; !esta {
+				evitarRepetir[one_label] = true
+				labels = append(labels, one_label)
 			}
 
-			evitarRepetir = make(map[string]bool)
-			l = fmt.Sprintf("%f", m.Value)
-			if _, esta := evitarRepetir[l]; !esta {
-				evitarRepetir[l] = true
-				setup.Values = append(setup.Values, l)
+			//TODO Impedir repetição
+			one_value := fmt.Sprintf("%.4f", model.Value)
+			if _, esta := evitarRepetirValor[one_value]; !esta {
+				evitarRepetirValor[one_value] = true
+				concrete_dataset.Data = append(concrete_dataset.Data, one_value)
 			}
 		}
 
-		if len(setup.Values) > 0 {
-			dataset = append(dataset, setup)
+		if len(concrete_dataset.Data) > 0 {
+			slice_datasets = append(slice_datasets, concrete_dataset)
 		}
+
 	}
 
 	data_device := map[string]interface{}{
 		"Labels":         labels,
-		"Dataset":        dataset,
+		"Dataset":        slice_datasets,
 		"URL":            c.URL,
 		"Device":         deviceView,
 		"DeviceRealTime": dr,

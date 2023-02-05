@@ -49,29 +49,28 @@
 	</div>
 </div>
 <script>
-	const data = {
-		labels: {{.Labels }},
-	datasets: {{.Dataset }}
-	};
 
 	const config = {
 		type: 'line',
-		data: data,
-		options: {
-			elements: {
-                point:{
-                        radius: 0
-                }
-            },
+		data: {
+			labels: {{.Labels }},
+			datasets: {{.Dataset }}
+		},
+		options: {			
 			responsive: true,
-			plugins: {
-				legend: {
-					position: 'top'
+			scales: {
+				yAxes: [{{if .Dataset}} {{range .Dataset}}
+				{
+					id: {{.YAxisID}},
+        			type: 'linear',
+        			display: true,
+        			position: 'left',
 				},
+				{{end}}
+				{{end}}]
 			},
-			radius: 0,
-		}
-	};
+		},
+	  };
 
 	var ctx = document.getElementById("chartDevices");
 	var myChart = Chart.Line(ctx, config);
