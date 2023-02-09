@@ -3,6 +3,8 @@ package util
 import (
 	"strings"
 	"time"
+
+	"celus-ti.com.br/qualitec/database/model"
 )
 
 func FormatCEP(cep string) string {
@@ -26,16 +28,28 @@ func FormatPhone(phone string) string {
 	return phone
 }
 
-func FormatTime(time *time.Time) string {
-	if time == nil {
+func FormatTime(value interface{}) string {
+	switch t := value.(type) {
+	case time.Time:
+		return t.Format("02/01/2006 15:04")
+	case *time.Time:
+		return t.Format("02/01/2006 15:04")
+	case model.QualitecTime:
+		return t.Format("02/01/2006 15:04")
+	default:
 		return "?"
 	}
-	return time.Format("02/01/2006 15:04")
 }
 
-func FormatDate(time *time.Time) string {
-	if time == nil {
+func FormatDate(value interface{}) string {
+	switch t := value.(type) {
+	case time.Time:
+		return t.Format("02/01/2006")
+	case *time.Time:
+		return t.Format("02/01/2006")
+	case model.QualitecTime:
+		return t.Format("02/01/2006")
+	default:
 		return "?"
 	}
-	return time.Format("02/01/2006")
 }
