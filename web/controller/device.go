@@ -164,8 +164,8 @@ func graphView(
 		Data        []string `json:"data"`
 		BorderColor string   `json:"borderColor"`
 		Fill        bool     `json:"fill"`
-		Tension     float64  `json:"tension"`
-		PointRadius int      `json:"pointradius"`
+		Tension     float64  `json:"lineTension"`
+		PointRadius int      `json:"pointRadius"`
 		YAxisID     string   `json:"yAxisID"`
 	}
 
