@@ -297,8 +297,8 @@ func historyView(dr []model.DeviceViewRealTime,
 		if err != nil {
 			return
 		}
-	} else {
-		temp1 = util.FirstDate(time.Now())
+		di = util.Ptr(util.FirstDate(temp1).UTC())
+		// qdi = temp1.Format("2006-01-02")
 	}
 
 	if qde != "" {
@@ -306,41 +306,39 @@ func historyView(dr []model.DeviceViewRealTime,
 		if err != nil {
 			return
 		}
-	} else {
-		temp2 = util.LastDate(time.Now())
+		de = util.Ptr(util.LastDate(temp2).UTC())
+		// qde = temp2.Format("2006-01-02")
 	}
-
-	di = util.Ptr(util.FirstDate(temp1))
-	de = util.Ptr(util.LastDate(temp2))
-
-	qdi = temp1.Format("2006-01-02")
-	qde = temp2.Format("2006-01-02")
 
 	channels := make(map[string]*model.DeviceViewRealTime)
 	for _, d := range dr {
 		channels[d.Channel] = &d
 	}
 
-	HistoryCount, err := model.DeviceHistory2Count(c.DB, &device.Device, di, de)
+	historyCount, err := model.DeviceHistory2Count(c.DB, &device.Device, di, de)
 	if err != nil {
 		return
 	}
 
 	page, err := strconv.Atoi(query.Get("page"))
-	if err != nil || page > int(math.Ceil(float64(HistoryCount)/float64(linesPerPage))) {
+	if err != nil || page > int(math.Ceil(float64(historyCount.Qtde)/float64(linesPerPage))) {
 		page = 1
 	}
 
 	historyInit := 0
-	if HistoryCount > 0 {
+	if historyCount.Qtde > 0 {
 		historyInit = linesPerPage*(page-1) + 1
 	}
-	historyEnd := util.Min(historyInit+linesPerPage-1, HistoryCount)
+	historyEnd := util.Min(historyInit+linesPerPage-1, int(historyCount.Qtde))
 
 	dh, err := model.DeviceHistory2GetByDevflag(c.DBEarth, &device.Device, dr, linesPerPage*(page-1), linesPerPage, di, de)
 	if err != nil {
 		return
 	}
+
+	// Pego a menor e maior data pra exibir nos campos de data
+	qdi = historyCount.Qdi.Format("2006-01-02")
+	qde = historyCount.Qde.Format("2006-01-02")
 
 	c.Template.Find("pagination")
 
@@ -349,13 +347,13 @@ func historyView(dr []model.DeviceViewRealTime,
 		"URL":            c.URL,
 		"DeviceRealTime": dr,
 		"DeviceHistory":  dh,
-		"HistoryCount":   HistoryCount,
+		"HistoryCount":   historyCount,
 		"HistoryInit":    historyInit,
 		"HistoryEnd":     historyEnd,
 		"Channels":       channels,
 		"Qdi":            qdi,
 		"Qde":            qde,
-		"Pagination": web.Pagination(c.Template, linesPerPage, HistoryCount, page, func(i int) string {
+		"Pagination": web.Pagination(c.Template, linesPerPage, historyCount.Qtde, page, func(i int) string {
 			return c.URL.GenURL("page", i)
 		}),
 	}
