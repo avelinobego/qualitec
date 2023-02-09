@@ -27,7 +27,7 @@ func DeviceParseID(id string) (DeviceID, error) {
 type Device struct {
 	ID      DeviceID
 	Devflag string
-	Created *time.Time
+	Created QualitecTime
 	Model   string
 	Tag     string
 }
@@ -83,7 +83,7 @@ type DeviceViewRealTime struct {
 	GraphMax           int     `db:"graph_max"`
 	GraphColor         string  `db:"graph_color"`
 	ConversionFactor   float64 `db:"conversion_factor"`
-	Time               *time.Time
+	Time               QualitecTime
 }
 
 // IsOnline determina se um device está online ou não com base nas configurações de hora.
@@ -150,7 +150,7 @@ type DeviceHistory struct {
 	Value   float64
 	Signals string
 	Voltage string
-	Time    *time.Time
+	Time    QualitecTime
 }
 
 const SQL_MPM6861_GRAPH string = `
@@ -234,7 +234,7 @@ ALTER TABLE `device`
 */
 
 type DeviceHistory2 struct {
-	Time    *time.Time
+	Time    QualitecTime
 	Channel *string
 	Value   *string
 	Signals *string
@@ -243,8 +243,8 @@ type DeviceHistory2 struct {
 
 type Count struct {
 	Qtde int
-	Qdi  *time.Time
-	Qde  *time.Time
+	Qdi  QualitecTime
+	Qde  QualitecTime
 }
 
 func DeviceHistory2Count(db database.Get, dev *Device, di, de *time.Time) (result Count, err error) {
