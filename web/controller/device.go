@@ -184,22 +184,19 @@ func graphView(
 	firstDay := util.FirstDate(time.Now())
 	lastDay := util.LastDate(time.Now())
 
-	if dataInicial == "" {
-		dataInicial = firstDay.Format("2006-01-02")
-	}
-
-	if dataFinal == "" {
-		dataFinal = lastDay.Format("2006-01-02")
-	}
-
 	if rangeBy != "" {
-		dataInicial = firstDay.Format("2006-01-02")
 		if rangeBy == "week" {
-			lastDay = lastDay.AddDate(0, 0, 7)
+			firstDay = firstDay.AddDate(0, 0, -7)
 		} else if rangeBy == "month" {
-			lastDay = lastDay.AddDate(0, 1, 0)
+			firstDay = firstDay.AddDate(0, -1, 0)
 		}
+		dataInicial = firstDay.Format("2006-01-02")
 		dataFinal = lastDay.Format("2006-01-02")
+	} else {
+		if dataInicial == "" || dataFinal == "" {
+			dataInicial = firstDay.Format("2006-01-02")
+			dataFinal = lastDay.Format("2006-01-02")
+		}
 	}
 
 	labels := []string{}
