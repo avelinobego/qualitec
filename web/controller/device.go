@@ -169,7 +169,7 @@ func graphView(
 		YAxisID     string   `json:"yAxisID"`
 	}
 
-	slice_datasets := []*dataset_struct{}
+	slice_datasets := make([]*dataset_struct, 0, 1024)
 
 	rangeBy := strings.ToLower(r.FormValue("rangeBy"))
 	dataInicial := r.FormValue("di")
@@ -199,11 +199,13 @@ func graphView(
 		}
 	}
 
-	labels := []string{}
+	labels := make([]string, 0, 1024)
+
+	label_repetido := make(map[string]bool)
 
 	for index, channel := range dr {
 
-		concrete_dataset := &dataset_struct{Data: []string{},
+		concrete_dataset := &dataset_struct{Data: make([]string, 0, 1024),
 			Label:       channel.ChannelDescription,
 			BorderColor: color(channel.GraphColor),
 			Fill:        false,
@@ -213,35 +215,28 @@ func graphView(
 
 		concrete_dataset.YAxisID = fmt.Sprintf("y%d", index)
 
-		// if index == 0 {
-		// 	concrete_dataset.YAxisID = "y"
-		// } else {
-		// 	concrete_dataset.YAxisID = fmt.Sprintf("y%d", index)
-		// }
-
 		var hmodel []model.DeviceHistory
-		hmodel, err = model.DeviceHistoryGetByDevflag(dataInicial, dataFinal, c.DBEarth, &deviceView.Device, channel.Channel)
+		hmodel, err = model.DeviceHistoryGetByDevflag(dataInicial,
+			dataFinal,
+			c.DBEarth,
+			&deviceView.Device,
+			channel.Channel)
 		if err != nil {
 			result = http.StatusInternalServerError
 			return
 		}
 
-		evitarRepetir := make(map[string]bool)
-		evitarRepetirValor := make(map[string]bool)
 		for _, model := range hmodel {
-			//TODO Impedir repetição
+
 			one_label := model.Time.Format("2006-01-02 15:04:05")
-			if _, esta := evitarRepetir[one_label]; !esta {
-				evitarRepetir[one_label] = true
+			if !label_repetido[one_label] {
+				label_repetido[one_label] = true
 				labels = append(labels, one_label)
 			}
 
-			//TODO Impedir repetição
 			one_value := fmt.Sprintf("%.4f", model.Value)
-			if _, esta := evitarRepetirValor[one_value]; !esta {
-				evitarRepetirValor[one_value] = true
-				concrete_dataset.Data = append(concrete_dataset.Data, one_value)
-			}
+			concrete_dataset.Data = append(concrete_dataset.Data, one_value)
+
 		}
 
 		if len(concrete_dataset.Data) > 0 {
@@ -279,32 +274,23 @@ func historyView(dr []model.DeviceViewRealTime,
 
 	query := r.URL.Query()
 
-	linesPerPage := 30
-
-	var di *time.Time
-	var de *time.Time
+	var di time.Time
+	var de time.Time
 	qdi := query.Get("di")
 	qde := query.Get("de")
 
-	var temp1 time.Time
-	var temp2 time.Time
-
 	if qdi != "" {
-		temp1, err = time.Parse("2006-01-02", qdi)
+		di, err = time.Parse("2006-01-02", qdi)
 		if err != nil {
 			return
 		}
-		di = util.Ptr(util.FirstDate(temp1).UTC())
-		// qdi = temp1.Format("2006-01-02")
 	}
 
 	if qde != "" {
-		temp2, err = time.Parse("2006-01-02", qde)
+		de, err = time.Parse("2006-01-02", qde)
 		if err != nil {
 			return
 		}
-		de = util.Ptr(util.LastDate(temp2).UTC())
-		// qde = temp2.Format("2006-01-02")
 	}
 
 	channels := make(map[string]*model.DeviceViewRealTime)
@@ -312,13 +298,19 @@ func historyView(dr []model.DeviceViewRealTime,
 		channels[d.Channel] = &d
 	}
 
-	historyCount, err := model.DeviceHistory2Count(c.DB, &device.Device, di, de)
+	historyCount, err := model.DeviceHistory2Count(c.DB, &device.Device, di, de, dr)
 	if err != nil {
 		return
 	}
 
-	page, err := strconv.Atoi(query.Get("page"))
-	if err != nil || page > int(math.Ceil(float64(historyCount.Qtde)/float64(linesPerPage))) {
+	linesPerPage := 30
+
+	var page int = 1
+	if qtd := query.Get("page"); qtd != "" {
+		page, _ = strconv.Atoi(query.Get("page"))
+	}
+
+	if page > int(math.Ceil(float64(historyCount.Qtde)/float64(linesPerPage))) {
 		page = 1
 	}
 
@@ -328,7 +320,14 @@ func historyView(dr []model.DeviceViewRealTime,
 	}
 	historyEnd := util.Min(historyInit+linesPerPage-1, int(historyCount.Qtde))
 
-	dh, err := model.DeviceHistory2GetByDevflag(c.DBEarth, &device.Device, dr, linesPerPage*(page-1), linesPerPage, di, de)
+	dh, err := model.DeviceHistory2GetByDevflag(c.DBEarth,
+		&device.Device,
+		dr,
+		linesPerPage*(page-1),
+		linesPerPage,
+		di,
+		de)
+
 	if err != nil {
 		return
 	}
