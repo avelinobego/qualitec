@@ -9,6 +9,8 @@ import (
 	"celus-ti.com.br/qualitec/database"
 )
 
+var vazio = time.Time{}
+
 const (
 	DeviceConsideredOnline = time.Hour * 6
 	ModelMpm6861           = "mpm6861"
@@ -153,8 +155,7 @@ type DeviceHistory struct {
 	Time    QualitecTime
 }
 
-const SQL_MPM6861_GRAPH string = `
-SELECT
+const SQL_MPM6861_GRAPH string = `SELECT
    _all.id,
    qualitec.device_channel.channel, 
    (_all.value * qualitec.device_channel.conversion_factor) AS value,
@@ -167,13 +168,11 @@ JOIN mpm6861.chl_data_all_%[1]s _all ON (_all.channel = qualitec.device_channel.
 WHERE 
 qualitec.device.devflag = ? AND 
 qualitec.device_channel.channel = ? AND 
-DATE(_all.time) BETWEEN ? AND ? 
-ORDER BY _all.time 
-LIMIT 100
-`
+DATE(CONVERT_TZ(_all.time, 'UTC', 'America/Sao_Paulo')) BETWEEN ? AND ?
+GROUP BY HOUR(_all.time)
+ORDER BY _all.time`
 
-const SLQ_GRAPH_EARTH = `
-SELECT 
+const SLQ_GRAPH_EARTH = `SELECT 
 	earth.id,
 	qc.channel, 
 	SUBSTRING_INDEX(SUBSTRING_INDEX(earth.value, ',', FIND_IN_SET(qc.channel, earth.channel)), ',', -1) * qc.conversion_factor AS value,
@@ -184,26 +183,29 @@ FROM qualitec.device quali
 	JOIN qualitec.device_channel qc ON (qc.device_id = quali.id)
 	JOIN earth1006.chl_data_prl_%[1]s earth ON earth.channel = qc.channel 
 WHERE quali.devflag = ? AND qc.channel = ? 
-	AND CONVERT_TZ(earth.time, 'UTC', 'America/Sao_Paulo') BETWEEN ? AND ?
-	ORDER BY earth.time DESC, earth.id DESC
-	LIMIT 100`
+	AND DATE(CONVERT_TZ(earth.time, 'UTC', 'America/Sao_Paulo')) BETWEEN ? AND ?
+	GROUP BY HOUR(earth.time)
+	ORDER BY earth.time`
 
 const SQL_HISTORY_MODELMPM6861 = `SELECT
 		earth1006.chl_data_prl_%[1]s.id,
 		qualitec.device_channel.channel,
-		SUBSTRING_INDEX(SUBSTRING_INDEX(earth1006.chl_data_prl_%[1]s.value, ',', FIND_IN_SET(qualitec.device_channel.channel, earth1006.chl_data_prl_%[1]s.channel)), ',', -1) * qualitec.device_channel.conversion_factor AS value,
-		CONVERT_TZ(earth1006.chl_data_prl_%[1]s.time, 'UTC', 'America/Sao_Paulo') AS time,
+		SUBSTRING_INDEX(SUBSTRING0_INDEX(earth1006.chl_data_prl_%[1]s.value, ',', FIND_IN_SET(qualitec.device_channel.channel, earth1006.chl_data_prl_%[1]s.channel)), ',', -1) * qualitec.device_channel.conversion_factor AS value,
+		DATE(CONVERT_TZ(earth1006.chl_data_prl_%[1]s.time, 'UTC', 'America/Sao_Paulo')) AS time,
 		earth1006.chl_data_prl_%[1]s.signals,
 		earth1006.chl_data_prl_%[1]s.voltage
 	FROM qualitec.device
 	JOIN qualitec.device_channel ON (qualitec.device_channel.device_id = qualitec.device.id)
 	JOIN earth1006.chl_data_prl_%[1]s
-	WHERE qualitec.device.devflag = ? AND qualitec.device_channel.channel = ?
-		AND earth1006.chl_data_prl_%[1]s.id > (SELECT CAST(MAX(earth1006.chl_data_prl_%[1]s.id) AS SIGNED) FROM earth1006.chl_data_prl_%[1]s) - 300
-	ORDER BY earth1006.chl_data_prl_%[1]s.time DESC, earth1006.chl_data_prl_%[1]s.id DESC
-	`
+	WHERE qualitec.device.devflag = ? 
+	AND qualitec.device_channel.channel = ?
+	ORDER BY earth1006.chl_data_prl_%[1]s.time DESC, earth1006.chl_data_prl_%[1]s.id DESC`
 
-func DeviceHistoryGetByDevflag(dataInicial string, dataFinal string, db database.Select, dev *Device, channel string) (h []DeviceHistory, err error) {
+func DeviceHistoryGetByDevflag(dataInicial string,
+	dataFinal string,
+	db database.Select,
+	dev *Device,
+	channel string) (h []DeviceHistory, err error) {
 
 	var WORK_SQL string
 	var di time.Time
@@ -247,40 +249,61 @@ type Count struct {
 	Qde  QualitecTime
 }
 
-func DeviceHistory2Count(db database.Get, dev *Device, di, de *time.Time) (result Count, err error) {
+func DeviceHistory2Count(db database.Get,
+	dev *Device,
+	di,
+	de time.Time,
+	dr []DeviceViewRealTime) (result Count, err error) {
+
 	if dev.Model == ModelMpm6861 {
-		if di != nil && de != nil {
-			sql := fmt.Sprintf(
-				`SELECT count(DISTINCT(time)) as "qtde", 
-					min(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) as "qdi", 
-					max(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) as "qde" 
-				FROM mpm6861.chl_data_all_%[1]s 
-				WHERE time BETWEEN ? AND ?`, dev.Devflag)
-			err = db.Get(&result, sql, di, de)
+
+		var first_channel string
+
+		sql := bytes.NewBufferString("SELECT COUNT(DISTINCT(d.time)) as `qtde`, ")
+		sql.WriteString("min(CONVERT_TZ(d.time, 'UTC', 'America/Sao_Paulo')) as `qdi`, ")
+		sql.WriteString("max(CONVERT_TZ(d.time, 'UTC', 'America/Sao_Paulo')) as `qde` ")
+		sql.WriteString("FROM mpm6861.chl_data_all_%[2]s d ")
+
+		for index, channel := range dr {
+			// Pegar o primeiro canal
+			if index == 0 {
+				first_channel = channel.Channel
+				continue
+			}
+			sql.WriteString(fmt.Sprintf("LEFT JOIN  mpm6861.chl_data_all_%[1]s lj%[2]d ON lj%[2]d.channel=%[3]s AND lj%[2]d.`time` = d.`time`", dev.Devflag, index, channel.Channel))
+		}
+
+		if di != vazio && de != vazio {
+			sql.WriteString("WHERE DATE(CONVERT_TZ(d.time, 'America/Sao_Paulo', 'UTC')) BETWEEN ? AND ? ")
+			sql.WriteString("AND d.channel = '%[1]s' ")
+			sql.WriteString("ORDER by d.time")
+			sql_final := fmt.Sprintf(sql.String(), first_channel, dev.Devflag)
+			err = db.Get(&result, sql_final, di, de)
 		} else {
-			sql := fmt.Sprintf(
-				`SELECT count(DISTINCT(time)) as "qtde", 
-					min(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) as "qdi", 
-					max(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) as "qde" 
-				FROM mpm6861.chl_data_all_%[1]s`, dev.Devflag)
-			err = db.Get(&result, sql)
+			sql.WriteString("WHERE d.channel = '%[1]s' ")
+			sql.WriteString("ORDER by d.time")
+			sql_final := fmt.Sprintf(sql.String(), first_channel, dev.Devflag)
+			err = db.Get(&result, sql_final)
 		}
 
 	} else {
-		if di != nil && de != nil {
+
+		if di != vazio && de != vazio {
 			sql := fmt.Sprintf(
-				`SELECT count(DISTINCT(time)) as "qtde", 
-					min(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) as "qdi", 
-					max(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) as "qde" 
-				FROM earth1006.chl_data_prl_%[1]s 
-				WHERE time BETWEEN ? AND ?`, dev.Devflag)
+				`SELECT count(DISTINCT(time)) as "qtde",
+					min(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) as "qdi",
+					max(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) as "qde"
+				FROM earth1006.chl_data_prl_%[1]s
+				WHERE CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo') >=  ? AND CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo') <= ?
+				ORDER BY time`, dev.Devflag)
 			err = db.Get(&result, sql, di, de)
 		} else {
 			sql := fmt.Sprintf(
-				`SELECT count(DISTINCT(time)) as "qtde", 
-					min(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) as "qdi", 
-					max(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) as "qde" 
-				FROM earth1006.chl_data_prl_%[1]s`, dev.Devflag)
+				`SELECT count(DISTINCT(time)) as "qtde",
+					min(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) as "qdi",
+					max(CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo')) as "qde"
+				FROM earth1006.chl_data_prl_%[1]s
+				ORDER BY time`, dev.Devflag)
 			err = db.Get(&result, sql)
 		}
 	}
@@ -293,7 +316,7 @@ func DeviceHistory2GetByDevflag(db database.Select,
 	limitFirst,
 	limitTotal int,
 	di,
-	de *time.Time) (dh []DeviceHistory2, err error) {
+	de time.Time) (dh []DeviceHistory2, err error) {
 
 	if dev.Model == ModelMpm6861 {
 		sql := bytes.NewBufferString("SELECT CONVERT_TZ(d.time, 'UTC', 'America/Sao_Paulo') AS `time`,")
@@ -334,8 +357,8 @@ func DeviceHistory2GetByDevflag(db database.Select,
 			sql.WriteString(fmt.Sprintf("LEFT JOIN  mpm6861.chl_data_all_%[1]s lj%[2]d ON lj%[2]d.channel=%[3]s AND lj%[2]d.`time` = d.`time`", dev.Devflag, index, channel.Channel))
 		}
 
-		if di != nil && de != nil {
-			sql.WriteString("WHERE d.time >= CONVERT_TZ(?, 'America/Sao_Paulo', 'UTC') AND d.time <= CONVERT_TZ(?, 'America/Sao_Paulo', 'UTC') ")
+		if di != vazio && de != vazio {
+			sql.WriteString("WHERE DATE(CONVERT_TZ(d.time, 'America/Sao_Paulo', 'UTC')) BETWEEN ? AND ? ")
 			sql.WriteString("AND d.channel = '%[3]s' ")
 			sql.WriteString("ORDER by d.time LIMIT %[1]d, %[2]d")
 			sql_final := fmt.Sprintf(sql.String(), limitFirst, limitTotal, first_channel)
@@ -348,7 +371,7 @@ func DeviceHistory2GetByDevflag(db database.Select,
 		}
 
 	} else {
-		if di != nil && de != nil {
+		if di != vazio && de != vazio {
 			sql := fmt.Sprintf(
 				`SELECT 
 				channel,
@@ -357,18 +380,13 @@ func DeviceHistory2GetByDevflag(db database.Select,
 				signals,
 				voltage
 			FROM %[1]s.chl_data_prl_%[2]s
-			WHERE time >= CONVERT_TZ(?, 'America/Sao_Paulo', 'UTC') AND time <= CONVERT_TZ(?, 'America/Sao_Paulo', 'UTC')
+			WHERE DATE(CONVERT_TZ(time, 'America/Sao_Paulo', 'UTC')) BETWEEN ? AND ? 
 			ORDER by time, id
 			LIMIT %d, %d`, dev.Model, dev.Devflag, limitFirst, limitTotal)
 			err = db.Select(&dh, sql, di, de)
 		} else {
 			sql := fmt.Sprintf(
-				`SELECT 
-				channel,
-				value,
-				CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo') AS time,
-				signals,
-				voltage
+				`SELECT channel,value, CONVERT_TZ(time, 'UTC', 'America/Sao_Paulo') AS time, signals, voltage
 			FROM %[1]s.chl_data_prl_%[2]s
 			ORDER by time, id
 			LIMIT %d, %d`, dev.Model, dev.Devflag, limitFirst, limitTotal)
